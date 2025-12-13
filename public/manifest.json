@@ -1,1 +1,48 @@
-
+{
+  "name": "VISIONSTREAM PRO",
+  "short_name": "VISIONSTREAM",
+  "description": "Player IPTV avançado com suporte a listas M3U",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#7d12ff",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "video", "utilities"],
+  "screenshots": [
+    {
+      "src": "assets/screenshot1.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "VISIONSTREAM PRO Dashboard"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Carregar Nova Lista",
+      "short_name": "Nova Lista",
+      "description": "Carregar uma nova lista M3U",
+      "url": "/?action=load"
+    },
+    {
+      "name": "Canais Favoritos",
+      "short_name": "Favoritos",
+      "description": "Ver canais favoritos",
+      "url": "/?action=favorites"
+    }
+  ]
+}
