@@ -6,7 +6,7 @@ document.addEventListener('DOMContentLoaded', function() {
         BACKEND_URL: 'https://visionstream-proxy.onrender.com',
         
         // Sua chave de API (VOCÊ VAI PEGAR NO RENDER E ATUALIZAR AQUI)
-        API_KEY: 'visionstream_key_123',
+        API_KEY: 'visionstream_prod_1735661234',
         
         // Provedores disponíveis
         PROVIDERS: {
