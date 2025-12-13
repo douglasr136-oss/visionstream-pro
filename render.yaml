@@ -1,1 +1,43 @@
-
+# render.yaml - Configuração Automática para Render.com
+services:
+  # BACKEND (Proxy Node.js)
+  - type: web
+    name: visionstream-proxy
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: API_KEY
+        generateValue: true  # Render gera uma chave secreta automaticamente
+      - key: NODE_ENV
+        value: production
+    healthCheckPath: /health
+    autoDeploy: true
+    plans:
+      - name: starter
+        cpu: 0.1
+        memory: 512
+        price: 0  # Plano FREE
+    
+  # FRONTEND (Seu App Web)
+  - type: static
+    name: visionstream-app
+    rootDir: public
+    buildCommand: null
+    publishDir: .
+    envVars:
+      - key: PUBLIC_URL
+        value: https://visionstream-app.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: Cache-Control
+        value: public, max-age=3600
+      - path: /assets/*
+        name: Cache-Control
+        value: public, max-age=86400
+    autoDeploy: true
