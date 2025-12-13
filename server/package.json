@@ -4,7 +4,7 @@
   "description": "Proxy seguro para playlists IPTV do VISIONSTREAM PRO",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "node server_simple.js",
     "dev": "nodemon server.js",
     "test": "node -e \"console.log('✅ Backend configurado!')\""
   },
