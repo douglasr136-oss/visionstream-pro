@@ -123,13 +123,14 @@ app.get('/health', (req, res) => {
 });
 
 // ==================== ROTA PRINCIPAL ====================
+// ==================== ROTA PRINCIPAL (VERSÃO CORRIGIDA) ====================
 app.get('/api/playlist', async (req, res) => {
     console.log('\n' + '='.repeat(60));
-    console.log('📥 REQUISIÇÃO /api/playlist');
+    console.log('📥 REQUISIÇÃO /api/playlist RECEBIDA');
     console.log('='.repeat(60));
     
+    console.log('📍 Origem:', req.headers.origin || 'Desconhecida');
     console.log('📋 Query params:', req.query);
-    console.log('🔑 API Key recebida:', req.headers['x-api-key'] || req.query.api_key || 'Nenhuma');
     
     try {
         const providerId = req.query.provider || 'provider1';
@@ -137,55 +138,60 @@ app.get('/api/playlist', async (req, res) => {
         
         if (!provider) {
             console.error(`❌ Provedor ${providerId} não encontrado`);
+            
+            // ENVIA HEADERS CORS ANTES DO ERRO
+            res.setHeader('Access-Control-Allow-Origin', '*');
+            res.setHeader('Content-Type', 'audio/x-mpegurl');
+            
             return res.status(400).send('#EXTM3U\n# Erro: Provedor não encontrado');
         }
         
         console.log(`📡 Provedor selecionado: ${provider.name}`);
-        console.log(`🔗 URL do provedor: ${provider.url}`);
+        console.log(`🔗 Tentando conectar ao provedor...`);
         
         // Tenta buscar do provedor real
         let m3uContent = '';
         try {
             const result = await fetchM3U(provider.url);
             m3uContent = result.data;
-            console.log(`✅ Dados recebidos do provedor: ${m3uContent.length} bytes`);
+            console.log(`✅ Conexão bem-sucedida: ${m3uContent.length} bytes`);
             
         } catch (providerError) {
-            console.error('❌ Erro ao buscar do provedor:', providerError.message);
+            console.error('❌ ERRO na conexão com o provedor:', providerError.message);
+            console.log('🔄 Usando playlist de fallback...');
             
-            // Fallback: playlist de teste
+            // Fallback SIMPLES - APENAS PARA TESTE
             m3uContent = `#EXTM3U
-# Playlist de Fallback - VisionStream PRO
+# Playlist de Teste - VisionStream PRO
 # Provedor: ${provider.name}
 # Data: ${new Date().toLocaleString('pt-BR')}
+# Status: Modo de testes ativado
 
-#EXTINF:-1 tvg-id="globo.br" tvg-name="GLOBO HD" tvg-logo="https://i.imgur.com/globo.png" group-title="Abertos",GLOBO HD
+#EXTINF:-1 tvg-id="teste1" tvg-name="GLOBO HD TESTE" group-title="Abertos",GLOBO HD
 https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
 
-#EXTINF:-1 tvg-id="sbt.br" tvg-name="SBT HD" tvg-logo="https://i.imgur.com/sbt.png" group-title="Abertos",SBT HD
+#EXTINF:-1 tvg-id="teste2" tvg-name="SBT HD TESTE" group-title="Abertos",SBT HD
 https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
 
-#EXTINF:-1 tvg-id="record.br" tvg-name="RECORD HD" tvg-logo="https://i.imgur.com/record.png" group-title="Abertos",RECORD HD
+#EXTINF:-1 tvg-id="teste3" tvg-name="RECORD HD TESTE" group-title="Abertos",RECORD HD
 https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
 
-#EXTINF:-1 tvg-id="band.br" tvg-name="BAND HD" tvg-logo="https://i.imgur.com/band.png" group-title="Abertos",BAND HD
+#EXTINF:-1 tvg-id="teste4" tvg-name="BAND HD TESTE" group-title="Abertos",BAND HD
 https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
 
-#EXTINF:-1 tvg-id="hbo.br" tvg-name="HBO HD" tvg-logo="https://i.imgur.com/hbo.png" group-title="Filmes",HBO HD
+#EXTINF:-1 tvg-id="teste5" tvg-name="HBO HD TESTE" group-title="Filmes",HBO HD
 https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
 
-#EXTINF:-1 tvg-id="espn.br" tvg-name="ESPN HD" tvg-logo="https://i.imgur.com/espn.png" group-title="Esportes",ESPN HD
+#EXTINF:-1 tvg-id="teste6" tvg-name="ESPN HD TESTE" group-title="Esportes",ESPN HD
 https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8
 
-#EXTINF:-1 tvg-id="disney.br" tvg-name="DISNEY HD" tvg-logo="https://i.imgur.com/disney.png" group-title="Infantil",DISNEY HD
-https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8`;
-            
-            console.log(`🔄 Usando fallback: ${m3uContent.length} bytes`);
+# Canais: 6
+# Esta é uma lista de teste do VisionStream PRO`;
         }
         
         // Contar canais
         const channelCount = (m3uContent.match(/#EXTINF:/g) || []).length;
-        console.log(`🎯 Total de canais: ${channelCount}`);
+        console.log(`🎯 Canais processados: ${channelCount}`);
         
         // Adicionar cabeçalho VisionStream
         const enhancedPlaylist = `#EXTM3U
@@ -193,44 +199,56 @@ https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8`;
 # Processado por: VISIONSTREAM PRO
 # Data: ${new Date().toLocaleString('pt-BR')}
 # Canais: ${channelCount}
+# Status: Online
 ${m3uContent}`;
         
-        // Configurar headers de resposta
-        res.setHeader('Content-Type', 'audio/x-mpegurl; charset=utf-8');
+        // ===== HEADERS CRUCIAIS =====
+        // CORS PRIMEIRO, SEMPRE
         res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
-        res.setHeader('Access-Control-Allow-Headers', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS, POST');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-API-Key, Accept');
+        
+        // Headers de conteúdo
+        res.setHeader('Content-Type', 'audio/x-mpegurl; charset=utf-8');
         res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
         res.setHeader('Pragma', 'no-cache');
         res.setHeader('Expires', '0');
+        
+        // Headers personalizados
+        res.setHeader('X-VisionStream-Status', 'OK');
         res.setHeader('X-VisionStream-Channels', channelCount);
         res.setHeader('X-VisionStream-Provider', provider.name);
-        res.setHeader('X-VisionStream-Version', '2.0.1');
         
-        console.log(`📤 Enviando resposta: ${channelCount} canais`);
+        console.log(`📤 Enviando resposta com ${channelCount} canais`);
+        console.log('✅ Headers enviados:', {
+            'Access-Control-Allow-Origin': '*',
+            'Content-Type': 'audio/x-mpegurl',
+            'X-VisionStream-Channels': channelCount
+        });
         console.log('='.repeat(60) + '\n');
         
-        res.send(enhancedPlaylist);
+        // ENVIAR A RESPOSTA FINAL
+        res.status(200).send(enhancedPlaylist);
         
     } catch (error) {
-        console.error('💥 ERRO NO SERVIDOR:', error);
-        console.error('Stack:', error.stack);
+        console.error('💥 ERRO FATAL NO SERVIDOR:', error.message);
         
+        // MESMO EM ERRO, ENVIAR HEADERS CORS
         res.setHeader('Access-Control-Allow-Origin', '*');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
         res.setHeader('Content-Type', 'audio/x-mpegurl');
         
         const errorPlaylist = `#EXTM3U
-# Erro no servidor VisionStream PRO
-# ${error.message}
-# Data: ${new Date().toISOString()}
+# VisionStream PRO - Servidor Online
+# Erro: ${error.message}
+# Data: ${new Date().toLocaleString('pt-BR')}
 
-#EXTINF:-1,ERRO: Servidor indisponível
+#EXTINF:-1,ERRO NO SERVIDOR - Tente novamente
 http://example.com/error`;
         
         res.status(500).send(errorPlaylist);
     }
 });
-
 // ==================== ROTA DE TESTE ====================
 app.get('/api/test', (req, res) => {
     console.log('✅ Rota de teste acessada');
