@@ -1029,7 +1029,28 @@
                     showPlayOverlay();
                 });
             }
-            
+            // No arquivo index.html, na função playChannel (~linha 1008)
+// ONDE cria o HLS, adicione:
+
+hls = new Hls({
+    enableWorker: true,
+    lowLatencyMode: true,
+    backBufferLength: 90,
+    maxBufferLength: 30,           // REDUZIDO
+    maxMaxBufferLength: 60,        // REDUZIDO  
+    maxBufferSize: 60 * 1000 * 1000, // 60MB máximo
+    maxBufferHole: 0.5,
+    
+    // Configurações para evitar buffer stall
+    liveSyncDurationCount: 3,
+    liveMaxLatencyDurationCount: 10,
+    abrEwmaFastLive: 3,
+    abrEwmaSlowLive: 9,
+    abrEwmaFastVoD: 3,
+    abrEwmaSlowVoD: 9,
+    stretchShortVideoTrack: true,
+    maxFragLookUpTolerance: 0.2
+});
             video.onplaying = function() {
                 document.getElementById('streamStatus').textContent = 'Status: Transmitindo';
                 document.getElementById('streamStatus').style.color = 'var(--success)';
