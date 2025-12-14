@@ -31,6 +31,8 @@ app.use(express.json());
 // SUAS CREDENCIAIS FICAM AQUI - NUNCA NO FRONTEND!
 const PROVIDERS_CONFIG = {
     // PROVEDOR 1 - Caderno Online
+    'provider1': {const PROVIDERS_CONFIG = {
+    // PROVEDOR 1 - Caderno Online (SEU LINK REAL)
     'provider1': {
         name: 'Provedor Principal',
         url: 'http://caderno.online/get.php',
@@ -41,16 +43,17 @@ const PROVIDERS_CONFIG = {
             output: 'mpegts'
         }
     },
-    // PROVEDOR 2 - Adicione outros provedores aqui
+    // PROVEDOR 2 - Adicione se tiver
     'provider2': {
         name: 'Provedor Secundário',
-        url: 'http://outroprovedor.com/api.php',
+        url: 'http://seu-outro-provedor.com/api.php',
         params: {
             user: 'cliente',
             pass: 'senha',
             type: 'm3u'
         }
     }
+
     // Adicione mais provedores conforme necessário
 };
 
