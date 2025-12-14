@@ -589,39 +589,252 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // ==================== PLAYER DE VÍDEO ====================
-    function playChannel(channel) {
-        if (!channel.url) {
-            showNotification('URL do canal inválida!', 'error');
-            return;
+function playChannel(channel) {
+    if (!channel.url) {
+        showNotification('URL do canal inválida!', 'error');
+        return;
+    }
+    
+    console.log('🎬 Iniciando reprodução do canal:', channel.name);
+    console.log('🔗 URL:', channel.url);
+    
+    currentChannel.textContent = channel.name;
+    streamStatus.textContent = 'Configurando player...';
+    streamStatus.style.color = 'var(--warning)';
+    
+    playerPlaceholder.style.display = 'none';
+    videoPlayer.style.display = 'block';
+    
+    // Destruir HLS anterior
+    if (window.hlsInstance) {
+        window.hlsInstance.destroy();
+        window.hlsInstance = null;
+    }
+    
+    // Limpar src atual
+    videoPlayer.src = '';
+    videoPlayer.removeAttribute('src');
+    videoPlayer.load();
+    
+    // Remover eventos antigos
+    videoPlayer.onerror = null;
+    videoPlayer.oncanplay = null;
+    
+    // Remover overlay se existir
+    const playOverlay = document.getElementById('playOverlay');
+    if (playOverlay) playOverlay.remove();
+    
+    // Verificar se é um formato suportado
+    const url = channel.url.toLowerCase();
+    const isM3U8 = url.includes('.m3u8');
+    const isMpegTS = url.includes('.ts') || url.includes('mpegts');
+    const isStream = url.includes('/live/') || url.includes('/stream/');
+    
+    console.log('📊 Detecção de formato:', {
+        isM3U8, isMpegTS, isStream, url
+    });
+    
+    // SEMPRE tentar usar HLS.js primeiro (mais compatível)
+    if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+        console.log('🚀 Usando HLS.js');
+        startHLSPlayback(channel);
+    } 
+    // Fallback para iOS/Safari (HLS nativo)
+    else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
+        console.log('🍎 Usando HLS nativo (Safari/iOS)');
+        startNativeHLS(channel);
+    }
+    // Fallback para streams diretos
+    else {
+        console.log('🔧 Usando reprodução direta');
+        startDirectPlayback(channel);
+    }
+    
+    appState.currentChannel = channel;
+    saveToLocalStorage('visionstream_lastChannel', channel);
+    
+    // Destacar canal selecionado na lista
+    document.querySelectorAll('.channel-card').forEach(card => {
+        card.classList.remove('playing');
+    });
+    
+    const clickedCard = document.querySelector(`.channel-card[data-index="${channel.index}"]`);
+    if (clickedCard) {
+        clickedCard.classList.add('playing');
+    }
+}
+    // ==================== FUNÇÕES DE REPRODUÇÃO ====================
+
+function startHLSPlayback(channel) {
+    try {
+        window.hlsInstance = new Hls({
+            enableWorker: true,
+            lowLatencyMode: true,
+            backBufferLength: 90,
+            maxBufferLength: 30,
+            maxMaxBufferLength: 60,
+            maxBufferSize: 60 * 1000 * 1000, // 60MB
+            maxBufferHole: 0.5,
+            manifestLoadingTimeOut: 10000,
+            manifestLoadingMaxRetry: 3,
+            manifestLoadingRetryDelay: 500,
+            levelLoadingTimeOut: 10000,
+            levelLoadingMaxRetry: 3,
+            levelLoadingRetryDelay: 500,
+            fragLoadingTimeOut: 20000,
+            fragLoadingMaxRetry: 6,
+            fragLoadingRetryDelay: 500
+        });
+        
+        window.hlsInstance.loadSource(channel.url);
+        window.hlsInstance.attachMedia(videoPlayer);
+        
+        window.hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
+            console.log('✅ Manifesto HLS carregado');
+            attemptAutoPlay();
+        });
+        
+        window.hlsInstance.on(Hls.Events.ERROR, function(event, data) {
+            console.error('❌ Erro HLS:', data);
+            
+            if (data.fatal) {
+                switch(data.type) {
+                    case Hls.ErrorTypes.NETWORK_ERROR:
+                        console.log('🔄 Tentando reconectar...');
+                        window.hlsInstance.startLoad();
+                        break;
+                    case Hls.ErrorTypes.MEDIA_ERROR:
+                        console.log('🔄 Recuperando erro de mídia...');
+                        window.hlsInstance.recoverMediaError();
+                        break;
+                    default:
+                        console.log('⚠️ Erro fatal, tentando método alternativo...');
+                        window.hlsInstance.destroy();
+                        startNativeHLS(channel);
+                        break;
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('❌ Erro ao inicializar HLS:', error);
+        startNativeHLS(channel);
+    }
+}
+
+function startNativeHLS(channel) {
+    console.log('🔧 Configurando HLS nativo');
+    
+    // Para Safari/iOS
+    videoPlayer.src = channel.url;
+    
+    if (channel.url.includes('.m3u8')) {
+        videoPlayer.type = 'application/vnd.apple.mpegurl';
+    }
+    
+    videoPlayer.load();
+    
+    videoPlayer.addEventListener('loadedmetadata', function() {
+        console.log('✅ Metadados carregados (HLS nativo)');
+        attemptAutoPlay();
+    });
+    
+    videoPlayer.addEventListener('error', function(e) {
+        console.error('❌ Erro no HLS nativo:', videoPlayer.error);
+        showNotification(`Erro: ${getVideoError(videoPlayer.error)}`, 'error');
+        streamStatus.textContent = 'Erro de reprodução';
+        streamStatus.style.color = 'var(--danger)';
+    });
+}
+
+function startDirectPlayback(channel) {
+    console.log('🔧 Configurando reprodução direta');
+    
+    videoPlayer.src = channel.url;
+    videoPlayer.load();
+    
+    videoPlayer.addEventListener('canplay', function() {
+        console.log('✅ Vídeo pronto para reprodução');
+        attemptAutoPlay();
+    });
+    
+    videoPlayer.addEventListener('error', function(e) {
+        console.error('❌ Erro na reprodução direta:', videoPlayer.error);
+        
+        // Tentar forçar como HLS mesmo sem extensão .m3u8
+        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+            console.log('🔄 Tentando forçar como HLS...');
+            startHLSPlayback(channel);
+        } else {
+            showNotification(`Erro: ${getVideoError(videoPlayer.error)}`, 'error');
+            streamStatus.textContent = 'Formato não suportado';
+            streamStatus.style.color = 'var(--danger)';
         }
+    });
+}
+
+function attemptAutoPlay() {
+    console.log('🎯 Tentando autoplay...');
+    
+    const playPromise = videoPlayer.play();
+    
+    if (playPromise !== undefined) {
+        playPromise.then(() => {
+            console.log('✅ Autoplay bem-sucedido!');
+            streamStatus.textContent = 'Transmitindo';
+            streamStatus.style.color = 'var(--success)';
+            showNotification(`Assistindo: ${appState.currentChannel.name}`, 'success');
+            
+            // Remover overlay
+            const playOverlay = document.getElementById('playOverlay');
+            if (playOverlay) playOverlay.remove();
+            
+        }).catch(error => {
+            console.log('⚠️ Autoplay bloqueado:', error.name);
+            
+            // Configurar para play no clique
+            streamStatus.textContent = '▶ Clique para reproduzir';
+            streamStatus.style.color = 'var(--warning)';
+            
+            // Adicionar overlay visual
+            addPlayOverlay();
+            
+            // Permitir play no clique
+            videoPlayer.style.cursor = 'pointer';
+            videoPlayer.addEventListener('click', handleVideoClick);
+        });
+    }
+}
+
+function handleVideoClick() {
+    videoPlayer.play().then(() => {
+        console.log('✅ Reprodução iniciada por clique');
+        streamStatus.textContent = 'Transmitindo';
+        streamStatus.style.color = 'var(--success)';
         
-        currentChannel.textContent = channel.name;
-        streamStatus.textContent = 'Conectando...';
-        streamStatus.style.color = 'var(--warning)';
+        const playOverlay = document.getElementById('playOverlay');
+        if (playOverlay) playOverlay.remove();
         
-        playerPlaceholder.style.display = 'none';
-        videoPlayer.style.display = 'block';
+        videoPlayer.style.cursor = '';
+        videoPlayer.removeEventListener('click', handleVideoClick);
         
-        if (hls) {
-            hls.destroy();
-            hls = null;
-        }
-        
-        videoPlayer.onerror = null;
-        videoPlayer.oncanplay = null;
-        
-        if (channel.url.includes('.m3u8')) {
-            if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-                hls = new Hls({
-                    enableWorker: true,
-                    lowLatencyMode: true,
-                    backBufferLength: 90
-                });
-                
-                hls.loadSource(channel.url);
-                hls.attachMedia(videoPlayer);
-                
-                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+    }).catch(error => {
+        console.error('❌ Erro ao reproduzir após clique:', error);
+        showNotification('Não foi possível reproduzir. Tente outro canal.', 'error');
+    });
+}
+
+function getVideoError(error) {
+    if (!error) return 'Erro desconhecido';
+    
+    switch(error.code) {
+        case 1: return 'Acesso à mídia cancelado';
+        case 2: return 'Rede indisponível';
+        case 3: return 'Formato não suportado';
+        case 4: return 'URL do vídeo inválida';
+        default: return `Erro ${error.code}`;
+    }
+}
     // MOSTRAR BOTÃO PLAY SE AUTOPLAY FALHAR
     const playHandler = () => {
         videoPlayer.play().then(() => {
