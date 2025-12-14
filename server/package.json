@@ -1,7 +1,7 @@
 {
   "name": "visionstream-proxy",
-  "version": "2.0.0",
-  "description": "Proxy server para VISIONSTREAM PRO com resposta JSON",
+  "version": "1.0.0",
+  "description": "Proxy M3U para VISIONSTREAM PRO",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -10,8 +10,7 @@
   "dependencies": {
     "express": "^4.18.2",
     "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "node-fetch": "^3.3.2"
+    "dotenv": "^16.3.1"
   },
   "engines": {
     "node": "18.x"
