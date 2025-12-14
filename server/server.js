@@ -29,10 +29,9 @@ app.use(express.json());
 
 // ==================== CONFIGURAÇÃO DOS PROVEDORES ====================
 // SUAS CREDENCIAIS FICAM AQUI - NUNCA NO FRONTEND!
+// ==================== CONFIGURAÇÃO DOS PROVEDORES REAIS ====================
 const PROVIDERS_CONFIG = {
-    // PROVEDOR 1 - Caderno Online
-    'provider1': {const PROVIDERS_CONFIG = {
-    // PROVEDOR 1 - Caderno Online (SEU LINK REAL)
+    // PROVEDOR 1 - Caderno Online (SEU LINK QUE FUNCIONA NO VUPLAYER)
     'provider1': {
         name: 'Provedor Principal',
         url: 'http://caderno.online/get.php',
@@ -41,22 +40,34 @@ const PROVIDERS_CONFIG = {
             password: '478356523',
             type: 'm3u_plus',
             output: 'mpegts'
+        },
+        // Método de fetch personalizado se precisar
+        customFetch: async (url) => {
+            const response = await fetch(url, {
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (VISIONSTREAM-PRO/2.0)',
+                    'Accept': 'audio/x-mpegurl, application/x-mpegurl, text/plain, */*'
+                },
+                timeout: 10000
+            });
+            return response.text();
         }
     },
-    // PROVEDOR 2 - Adicione se tiver
+    
+    // PROVEDOR 2 - Adicione seu segundo provedor AQUI
     'provider2': {
         name: 'Provedor Secundário',
-        url: 'http://seu-outro-provedor.com/api.php',
+        url: 'http://SEU-SEGUNDO-PROVEDOR.com/api.php',
         params: {
-            user: 'cliente',
-            pass: 'senha',
+            user: 'SEU_USUARIO',
+            pass: 'SUA_SENHA',
             type: 'm3u'
         }
     }
-
+    
     // Adicione mais provedores conforme necessário
+    // 'provider3': { ... }
 };
-
 // ==================== FUNÇÕES AUXILIARES ====================
 function buildProviderUrl(providerConfig) {
     const url = new URL(providerConfig.url);
