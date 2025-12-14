@@ -78,46 +78,91 @@ function buildProviderUrl(providerConfig) {
 }
 
 async function fetchPlaylist(url) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 15000); // 15 segundos timeout
+    console.log('🔗 Buscando playlist:', url);
     
+    // Para URLs HTTP (seus provedores), precisamos de um proxy
+    if (url.startsWith('http://')) {
+        try {
+            // Método 1: Tentar diretamente (pode falhar por CORS)
+            console.log('🌐 Tentando acesso direto HTTP...');
+            const httpsUrl = url.replace('http://', 'https://');
+            const response = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, {
+                headers: {
+                    'User-Agent': 'VISIONSTREAM-PRO/2.0',
+                    'Accept': 'audio/x-mpegurl, text/plain'
+                },
+                timeout: 15000
+            });
+            
+            if (response.ok) {
+                const text = await response.text();
+                console.log('✅ Playlist obtida via proxy:', text.length, 'bytes');
+                return {
+                    success: true,
+                    data: text,
+                    contentType: 'audio/x-mpegurl'
+                };
+            }
+            
+            throw new Error('Proxy falhou');
+            
+        } catch (proxyError) {
+            console.log('⚠️ Proxy falhou, tentando método alternativo...');
+            
+            // Método 2: Usar CORS proxy alternativo
+            try {
+                const corsProxy = 'https://corsproxy.io/?';
+                const response = await fetch(corsProxy + encodeURIComponent(url), {
+                    headers: {
+                        'User-Agent': 'VISIONSTREAM-PRO/2.0'
+                    }
+                });
+                
+                if (response.ok) {
+                    const text = await response.text();
+                    return {
+                        success: true,
+                        data: text,
+                        contentType: 'audio/x-mpegurl'
+                    };
+                }
+                
+                throw new Error('Todos os proxies falharam');
+                
+            } catch (error) {
+                console.error('❌ Erro ao buscar playlist:', error);
+                return {
+                    success: false,
+                    error: 'Não foi possível conectar ao provedor. Tente novamente.'
+                };
+            }
+        }
+    }
+    
+    // Para URLs HTTPS (se tiver)
     try {
         const response = await fetch(url, {
-            signal: controller.signal,
             headers: {
-                'User-Agent': 'Mozilla/5.0 (VISIONSTREAM-PRO/2.0)',
-                'Accept': 'audio/x-mpegurl, application/x-mpegurl, text/plain, */*',
-                'Accept-Encoding': 'gzip, deflate'
+                'User-Agent': 'VISIONSTREAM-PRO/2.0'
             },
-            compress: true,
-            redirect: 'follow'
+            timeout: 10000
         });
         
-        clearTimeout(timeout);
-        
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        if (response.ok) {
+            const text = await response.text();
+            return {
+                success: true,
+                data: text,
+                contentType: 'audio/x-mpegurl'
+            };
         }
         
-        const contentType = response.headers.get('content-type') || '';
-        const text = await response.text();
-        
-        // Validação básica do conteúdo
-        if (!text || text.trim().length === 0) {
-            throw new Error('Playlist vazia recebida do provedor');
-        }
-        
-        return {
-            success: true,
-            data: text,
-            contentType: contentType.includes('mpegurl') ? 'audio/x-mpegurl' : 'text/plain'
-        };
+        throw new Error(`HTTP ${response.status}`);
         
     } catch (error) {
-        clearTimeout(timeout);
         return {
             success: false,
-            error: error.name === 'AbortError' ? 'Timeout: O provedor demorou muito para responder' : error.message
+            error: error.message
         };
     }
 }
