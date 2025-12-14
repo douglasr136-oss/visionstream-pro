@@ -3,273 +3,113 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VISIONSTREAM PRO - Player IPTV</title>
-    <link rel="stylesheet" href="style.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&family=Orbitron:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <link rel="icon" type="image/x-icon" href="assets/favicon.ico">
-    <!-- PWA Config -->
-    <link rel="manifest" href="manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="VISIONSTREAM PRO">
+    
+    <title>VISIONSTREAM PRO</title>
+    
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- HLS.js Player -->
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.10/dist/hls.min.js"></script>
+    
+    <!-- Estilos -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Favicon -->
+    <link rel="icon" href="assets/favicon.ico" type="image/x-icon">
     <link rel="apple-touch-icon" href="assets/icon-192.png">
-    <meta name="theme-color" content="#7d12ff">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Estilos inline para evitar FOUC -->
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: #0a0a0a;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            flex-direction: column;
+        }
+        
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid rgba(147, 51, 234, 0.3);
+            border-top: 3px solid #9333EA;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <!-- Cabeçalho com Logo -->
-        <header class="header">
-            <div class="logo-container">
-                <div class="logo-image">
-                    <img src="assets/visionstream.jpg" alt="VISIONSTREAM PRO Logo">
-                </div>
-                <div class="logo-text-container">
-                    <h1 class="logo-text">VISION<span class="logo-highlight">STREAM</span></h1>
-                    <div class="logo-subtitle">
-                        <span class="pro-badge">PRO</span>
-                        <span class="streaming-text">STREAMING</span>
-                    </div>
-                </div>
-            </div>
-            <div class="user-info">
-                <div class="status-indicator active"></div>
-                <span>Online</span>
-            </div>
+    <!-- Tela de Carregamento -->
+    <div class="loading" id="loadingScreen">
+        <div class="loading-spinner"></div>
+        <div style="color: #9333EA; font-size: 20px; font-weight: bold;">VISIONSTREAM PRO</div>
+        <div style="color: #888; margin-top: 10px;">Inicializando sistema...</div>
+    </div>
+
+    <!-- Conteúdo Principal (oculto inicialmente) -->
+    <div id="appContent" style="display: none;">
+        <!-- Seu conteúdo existente aqui -->
+        <header class="app-header">
+            <!-- Mantenha seu header atual -->
         </header>
 
-        <!-- Painel de Autenticação -->
-        <section class="auth-panel">
-            <div class="auth-header">
-                <h2><i class="fas fa-key"></i> ATIVAÇÃO DO SISTEMA</h2>
-                <p class="subtitle">Informe seu MAC e KEY para acessar o conteúdo</p>
-            </div>
-            
-            <div class="auth-form">
-                <div class="form-group">
-                    <label for="mac"><i class="fas fa-desktop"></i> Endereço MAC</label>
-                    <input type="text" id="mac" placeholder="Ex: AA:BB:CC:DD:EE:FF" value="A1:B2:C3:D4:E5:F6">
-                </div>
-                
-                <div class="form-group">
-                    <label for="key"><i class="fas fa-lock"></i> Chave de Acesso</label>
-                    <input type="text" id="key" placeholder="Ex: VISION-XXXX-XXXX" value="VISION-7A3B-9C2D">
-                </div>
-                
-                <div class="form-actions">
-                    <button id="activateBtn" class="btn btn-primary">
-                        <i class="fas fa-unlock-alt"></i> Ativar Sistema
-                    </button>
-                    <button id="resetBtn" class="btn btn-secondary">
-                        <i class="fas fa-redo"></i> Limpar
-                    </button>
-                </div>
-            </div>
-            
-            <div class="auth-status">
-                <p><i class="fas fa-info-circle"></i> Status: <span id="statusText">Aguardando ativação</span></p>
-            </div>
-        </section>
+        <main class="container">
+            <!-- Mantenha suas seções atuais -->
+        </main>
 
-        <!-- Painel de Listas IPTV -->
-        <section class="playlist-panel">
-            <div class="panel-header">
-                <h2><i class="fas fa-list-alt"></i> GERENCIADOR DE LISTAS IPTV</h2>
-                <div class="header-actions">
-                    <button id="reloadBtn" class="btn btn-reload">
-                        <i class="fas fa-sync-alt"></i> Recarregar Lista
-                    </button>
-                </div>
-            </div>
-            
-            <div class="playlist-input">
-                <div class="input-group">
-                    <label for="m3uUrl"><i class="fas fa-link"></i> URL da Lista M3U</label>
-                    <div class="url-input-container">
-                        <input type="text" id="m3uUrl" placeholder="https://exemplo.com/lista.m3u ou http://exemplo.com/lista.m3u">
-                        <button id="loadListBtn" class="btn btn-load">
-                            <i class="fas fa-download"></i> Carregar
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="playlist-presets">
-                    <p><i class="fas fa-bolt"></i> URLs de exemplo (clique para usar):</p>
-                    <div class="preset-buttons">
-                        <button class="preset-btn" data-url="https://raw.githubusercontent.com/Free-IPTV/Countries/master/BR.m3u">Lista Brasil</button>
-                        <button class="preset-btn" data-url="https://iptv-org.github.io/iptv/index.nsfw.m3u">Lista Internacional</button>
-                        <button class="preset-btn" data-url="https://raw.githubusercontent.com/iptv-org/iptv/master/streams/br.m3u">Lista BR Alternativa</button>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Status da Lista -->
-            <div class="playlist-status">
-                <div class="status-card">
-                    <div class="status-icon">
-                        <i class="fas fa-database"></i>
-                    </div>
-                    <div class="status-info">
-                        <h3>Lista Carregada</h3>
-                        <p>Canais: <span id="channelCount">0</span> | Categorias: <span id="categoryCount">0</span></p>
-                    </div>
-                </div>
-                
-                <div class="status-card">
-                    <div class="status-icon">
-                        <i class="fas fa-clock"></i>
-                    </div>
-                    <div class="status-info">
-                        <h3>Última Atualização</h3>
-                        <p id="lastUpdate">Nunca</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Player de Vídeo -->
-        <section class="player-section">
-            <div class="player-container">
-                <div class="player-header">
-                    <h2><i class="fas fa-play-circle"></i> PLAYER VISIONSTREAM</h2>
-                    <div class="player-controls">
-                        <button id="fullscreenBtn" class="btn btn-control">
-                            <i class="fas fa-expand"></i> Tela Cheia
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="video-container">
-                    <video id="videoPlayer" controls>
-                        <source src="" type="video/mp4">
-                        Seu navegador não suporta a tag de vídeo.
-                    </video>
-                    <div class="player-placeholder" id="playerPlaceholder">
-                        <div class="placeholder-logo">
-                            <img src="assets/visionstream.jpg" alt="VISIONSTREAM">
-                        </div>
-                        <h3>VISIONSTREAM PRO Player</h3>
-                        <p>Carregue uma lista IPTV e selecione um canal para começar</p>
-                    </div>
-                </div>
-                
-                <div class="player-info">
-                    <p><i class="fas fa-info-circle"></i> Canal Atual: <span id="currentChannel">Nenhum</span></p>
-                    <p><i class="fas fa-signal"></i> Status: <span id="streamStatus">Aguardando</span></p>
-                </div>
-            </div>
-        </section>
-
-        <!-- Lista de Canais -->
-        <section class="channels-section">
-            <div class="section-header">
-                <h2><i class="fas fa-tv"></i> CANAIS DISPONÍVEIS</h2>
-                <div class="search-container">
-                    <input type="text" id="channelSearch" placeholder="Buscar canal...">
-                    <i class="fas fa-search"></i>
-                </div>
-            </div>
-            
-            <div class="categories-tabs" id="categoriesTabs">
-                <!-- As categorias serão geradas dinamicamente via JavaScript -->
-                <button class="category-tab active" data-category="all">Todos os Canais</button>
-            </div>
-            
-            <div class="channels-container">
-                <div class="channels-grid" id="channelsGrid">
-                    <!-- Os canais serão carregados dinamicamente via JavaScript -->
-                    <div class="empty-state">
-                        <i class="fas fa-broadcast-tower"></i>
-                        <h3>Nenhum canal carregado</h3>
-                        <p>Carregue uma lista IPTV para visualizar os canais disponíveis</p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Rodapé -->
-        <footer class="footer">
-            <div class="footer-content">
-                <div class="footer-logo">
-                    <div class="footer-logo-image">
-                        <img src="assets/visionstream.jpg" alt="VISIONSTREAM">
-                    </div>
-                    <div>
-                        <h3>VISION<span class="logo-highlight">STREAM</span> <span class="pro-badge">PRO</span></h3>
-                        <p>Player IPTV Avançado - Compatível com listas M3U</p>
-                    </div>
-                </div>
-                
-                <div class="footer-info">
-                    <p><i class="fas fa-code neon-blue"></i> Desenvolvido para máxima compatibilidade</p>
-                    <p><i class="fas fa-shield-alt neon-purple"></i> Sistema seguro com autenticação MAC/KEY</p>
-                    <p><i class="fas fa-globe neon-green"></i> Web, iOS e Android (PWA)</p>
-                </div>
-                
-                <div class="footer-actions">
-                    <button id="exportBtn" class="btn btn-footer">
-                        <i class="fas fa-file-export"></i> Exportar Lista
-                    </button>
-                    <button id="instructionsBtn" class="btn btn-footer">
-                        <i class="fas fa-question-circle"></i> Instruções
-                    </button>
-                </div>
-            </div>
-            
-            <div class="footer-copyright">
-                <p>&copy; 2023 VISIONSTREAM PRO. Este é um player para uso pessoal.</p>
-                <p class="neon-glow">STREAMING DE ALTA QUALIDADE</p>
-            </div>
-        </footer>
-    </div>
-
-    <!-- Modal de Instruções -->
-    <div class="modal" id="instructionsModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2><i class="fas fa-question-circle"></i> Instruções do VISIONSTREAM PRO</h2>
-                <button class="close-modal">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div class="instruction-step">
-                    <h3><span class="step-number">1</span> Ativação do Sistema</h3>
-                    <p>Informe um endereço MAC e uma chave de acesso válidos para ativar o sistema. Use o formato correto para ambos.</p>
-                </div>
-                
-                <div class="instruction-step">
-                    <h3><span class="step-number">2</span> Carregar Lista IPTV</h3>
-                    <p>Cole a URL da sua lista M3U no campo fornecido e clique em "Carregar". Você também pode usar uma das listas de exemplo.</p>
-                </div>
-                
-                <div class="instruction-step">
-                    <h3><span class="step-number">3</span> Navegar nos Canais</h3>
-                    <p>Após carregar a lista, os canais serão exibidos. Clique em qualquer canal para iniciar a reprodução.</p>
-                </div>
-                
-                <div class="instruction-step">
-                    <h3><span class="step-number">4</span> Recarregar Lista</h3>
-                    <p>Use o botão "Recarregar Lista" para atualizar a lista de canais com a URL atual.</p>
-                </div>
-                
-                <div class="instruction-notes">
-                    <h4><i class="fas fa-exclamation-triangle"></i> Notas Importantes</h4>
-                    <ul>
-                        <li>Este player funciona apenas com listas M3U públicas via HTTP/HTTPS</li>
-                        <li>Alguns canais podem não funcionar devido a restrições CORS ou formato não suportado</li>
-                        <li>Para melhor experiência, use o aplicativo em dispositivos compatíveis com HLS</li>
-                        <li>Este é um player web e depende da compatibilidade do navegador</li>
-                    </ul>
-                </div>
-            </div>
+        <!-- Modal de Instruções -->
+        <div id="instructionsModal" class="modal">
+            <!-- Mantenha seu modal atual -->
         </div>
     </div>
-<!-- Adicione esta linha antes do seu script.js -->
-<script src="https://cdn.jsdelivr.net/npm/hls.js@1.4.10/dist/hls.min.js"></script>
-<script src="script.js"></script>
-    <!-- Script HLS.js para streaming -->
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+
+    <!-- Scripts -->
     <script src="script.js"></script>
+    
+    <!-- Script de inicialização -->
+    <script>
+        // Esconder loading após 1.5 segundos
+        setTimeout(() => {
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('appContent').style.display = 'block';
+            
+            // Inicializar sistema
+            if (typeof initVisionStream === 'function') {
+                initVisionStream();
+            }
+        }, 1500);
+    </script>
 </body>
 </html>
