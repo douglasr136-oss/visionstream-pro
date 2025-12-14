@@ -1,25 +1,12 @@
 {
   "name": "visionstream-proxy",
   "version": "1.0.0",
-  "description": "Proxy seguro para playlists IPTV do VISIONSTREAM PRO",
   "main": "server.js",
   "scripts": {
-    "start": "node server_simple.js",
-    "dev": "nodemon server.js",
-    "test": "node -e \"console.log('✅ Backend configurado!')\""
+    "start": "node server.js"
   },
-  "keywords": ["iptv", "proxy", "m3u", "streaming"],
-  "author": "VISIONSTREAM PRO",
-  "license": "MIT",
-  "dependencies": {
-    "express": "^4.18.2",
-    "cors": "^2.8.5",
-    "node-fetch": "^2.6.9",
-    "dotenv": "^16.0.3",
-    "helmet": "^7.0.0"
-  },
+  "dependencies": {},
   "engines": {
-    "node": ">=18.0.0",
-    "npm": ">=8.0.0"
+    "node": "18.x"
   }
 }
