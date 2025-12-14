@@ -966,68 +966,24 @@ function addPlayOverlay() {
     const existingOverlay = document.getElementById('playOverlay');
     if (existingOverlay) existingOverlay.remove();
     
-    // Criar novo overlay
+    // Criar overlay
     const overlay = document.createElement('div');
     overlay.id = 'playOverlay';
-    overlay.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0, 0, 0, 0.7);
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
-        z-index: 10;
-        cursor: pointer;
-        border-radius: 12px;
-    `;
+    overlay.className = 'play-overlay';
     
-    overlay.innerHTML = `
-        <div style="
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 20px;
-            text-align: center;
-            border: 2px solid var(--neon-purple);
-            box-shadow: 0 0 30px rgba(147, 51, 234, 0.5);
-            max-width: 80%;
-        ">
-            <div style="
-                font-size: 60px;
-                color: var(--neon-green);
-                margin-bottom: 20px;
-                animation: pulse 1.5s infinite;
-            ">
-                ▶
-            </div>
-            <h3 style="
-                color: var(--neon-purple);
-                margin: 0 0 10px 0;
-                font-size: 24px;
-            ">
-                CLIQUE PARA REPRODUZIR
-            </h3>
-            <p style="
-                color: var(--text-secondary);
-                margin: 0;
-                font-size: 16px;
-            ">
-                O navegador requer uma interação para iniciar o vídeo
-            </p>
-            <p style="
-                color: var(--text-secondary);
-                margin: 15px 0 0 0;
-                font-size: 14px;
-                opacity: 0.8;
-            ">
-                Clique em qualquer lugar nesta área
-            </p>
-        </div>
-    `;
+    // Adicionar ao container do player
+    const playerContainer = document.querySelector('.video-container') || videoPlayer.parentElement;
+    if (playerContainer) {
+        playerContainer.style.position = 'relative';
+        playerContainer.appendChild(overlay);
+    }
     
+    // Configurar clique
+    overlay.addEventListener('click', function(e) {
+        e.stopPropagation();
+        handleVideoClick();
+    });
+}
     // Adicionar ao container do player
     const playerContainer = document.querySelector('.video-container');
     if (playerContainer) {
