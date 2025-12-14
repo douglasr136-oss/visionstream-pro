@@ -1152,11 +1152,15 @@ hls = new Hls({
                 console.error('Erro ao carregar:', e);
             }
         }
-
         // ==================== FUNÇÕES GLOBAIS ====================
-        window.playChannel = playChannel;
-        window.setCategory = setCategory;
-        window.showNotification = showNotification;
+        try {
+            window.playChannel = playChannel;
+            window.setCategory = setCategory;
+            window.showNotification = showNotification;
+            console.log('✅ Funções globais registradas');
+        } catch (e) {
+            console.error('❌ Erro ao registrar funções globais:', e);
+        }
     </script>
 </body>
 </html>
