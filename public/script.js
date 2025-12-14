@@ -1,14 +1,11 @@
-// script.js - VISIONSTREAM PRO Player (Versão Render)
-document.addEventListener('DOMContentLoaded', function() {
+// script.js - VISIONSTREAM PRO Player (Versão Render - CORRIGIDA)
+function initVisionStream() {
+    console.log('🚀 VISIONSTREAM PRO Inicializando...');
+    
     // ==================== CONFIGURAÇÃO DO SISTEMA ====================
     const CONFIG = {
-        // URL do seu backend no Render (ATUALIZE APÓS DEPLOY)
         BACKEND_URL: 'https://visionstream-proxy.onrender.com',
-        
-        // Sua chave de API (VOCÊ VAI PEGAR NO RENDER E ATUALIZAR AQUI)
         API_KEY: 'visionstream_prod_1735661234',
-        
-        // Provedores disponíveis
         PROVIDERS: {
             'provider1': { name: 'Provedor Principal', icon: 'fa-wifi' },
             'provider2': { name: 'Provedor Secundário', icon: 'fa-satellite-dish' }
@@ -21,9 +18,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const activateBtn = document.getElementById('activateBtn');
     const resetBtn = document.getElementById('resetBtn');
     const statusText = document.getElementById('statusText');
-    const m3uUrlInput = document.getElementById('m3uUrl');
-    const loadListBtn = document.getElementById('loadListBtn');
-    const reloadBtn = document.getElementById('reloadBtn');
     const channelCount = document.getElementById('channelCount');
     const categoryCount = document.getElementById('categoryCount');
     const lastUpdate = document.getElementById('lastUpdate');
@@ -39,7 +33,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const instructionsBtn = document.getElementById('instructionsBtn');
     const instructionsModal = document.getElementById('instructionsModal');
     const closeModal = document.querySelector('.close-modal');
-    const presetButtons = document.querySelectorAll('.preset-btn');
+    const reloadBtn = document.getElementById('reloadBtn');
     
     // Estado da aplicação
     let appState = {
@@ -58,93 +52,88 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // ==================== INICIALIZAÇÃO DO SISTEMA ====================
     function initSystem() {
-        // Remover campo de URL antigo e adicionar seletor de provedor
-        initProviderSelector();
-        
         // Verificar se há dados salvos
         loadFromLocalStorage();
         
         // Configurar placeholder inicial
-        playerPlaceholder.style.display = 'flex';
-        videoPlayer.style.display = 'none';
+        if (playerPlaceholder) playerPlaceholder.style.display = 'flex';
+        if (videoPlayer) videoPlayer.style.display = 'none';
         
         // Configurar eventos do player de vídeo
-        videoPlayer.addEventListener('playing', () => {
-            streamStatus.textContent = 'Transmitindo';
-            streamStatus.style.color = 'var(--success)';
-        });
+        if (videoPlayer) {
+            videoPlayer.addEventListener('playing', () => {
+                if (streamStatus) {
+                    streamStatus.textContent = 'Transmitindo';
+                    streamStatus.style.color = 'var(--success)';
+                }
+            });
+            
+            videoPlayer.addEventListener('waiting', () => {
+                if (streamStatus) {
+                    streamStatus.textContent = 'Buffering...';
+                    streamStatus.style.color = 'var(--warning)';
+                }
+            });
+            
+            videoPlayer.addEventListener('ended', () => {
+                if (streamStatus) {
+                    streamStatus.textContent = 'Transmissão encerrada';
+                    streamStatus.style.color = 'var(--text-secondary)';
+                }
+            });
+        }
         
-        videoPlayer.addEventListener('waiting', () => {
-            streamStatus.textContent = 'Buffering...';
-            streamStatus.style.color = 'var(--warning)';
-        });
+        // Inicializar seletor de provedor
+        initProviderSelector();
         
-        videoPlayer.addEventListener('ended', () => {
-            streamStatus.textContent = 'Transmissão encerrada';
-            streamStatus.style.color = 'var(--text-secondary)';
-        });
+        // Verificar status dos provedores
+        checkProvidersStatus();
         
         // Mostrar notificação de boas-vindas
         setTimeout(() => {
-            showNotification('Bem-vindo ao VISIONSTREAM PRO! Sistema otimizado para Render.com', 'info');
-        }, 1000);
-        
-        // Verificar configuração
-        if (CONFIG.API_KEY === 'SUA_CHAVE_API_AQUI_COLE_A_CHAVE_DO_RENDER') {
-            console.warn('⚠️ ATENÇÃO: Configure a API_KEY no arquivo script.js');
-            showNotification('Configure a chave de API no sistema', 'warning');
-        }
+            showNotification('VISIONSTREAM PRO Carregado! Selecione um provedor.', 'info');
+        }, 2000);
     }
     
     // ==================== SELEÇÃO DE PROVEDOR ====================
     function initProviderSelector() {
-        // Remover o campo de URL antigo
-        const urlInputGroup = document.querySelector('.url-input-container');
-        if (urlInputGroup) {
-            urlInputGroup.style.display = 'none';
-        }
+        const playlistPanel = document.querySelector('.playlist-input');
+        if (!playlistPanel) return;
         
-        // Criar container de seleção de provedor
-        const providerContainer = document.createElement('div');
-        providerContainer.className = 'provider-selection';
-        providerContainer.innerHTML = `
-            <div class="provider-header">
-                <i class="fas fa-server"></i>
-                <h3>SISTEMA DE PROVEDORES</h3>
-            </div>
-            <div class="provider-subtitle">
-                <i class="fas fa-info-circle"></i>
-                <p>Selecione o provedor para carregar a playlist</p>
-            </div>
-            <div class="provider-buttons">
-                ${Object.entries(CONFIG.PROVIDERS).map(([id, provider]) => `
-                    <button class="provider-btn ${id === 'provider1' ? 'active' : ''}" 
-                            data-provider="${id}" id="providerBtn_${id}">
-                        <div class="provider-icon">
-                            <i class="fas ${provider.icon}"></i>
-                        </div>
-                        <div class="provider-info">
-                            <h4>${provider.name}</h4>
-                            <span class="provider-status" id="status_${id}">🔴 Offline</span>
-                        </div>
-                        <div class="provider-action">
-                            <i class="fas fa-arrow-right"></i>
-                        </div>
-                    </button>
-                `).join('')}
-            </div>
-            <div class="provider-footer">
-                <i class="fas fa-sync-alt"></i>
-                <span>Sistema otimizado para alta velocidade</span>
+        playlistPanel.innerHTML = `
+            <div class="provider-selection">
+                <div class="provider-header">
+                    <i class="fas fa-server"></i>
+                    <h3>SISTEMA DE PROVEDORES</h3>
+                </div>
+                <div class="provider-subtitle">
+                    <i class="fas fa-info-circle"></i>
+                    <p>Selecione o provedor para carregar a playlist</p>
+                </div>
+                <div class="provider-buttons">
+                    ${Object.entries(CONFIG.PROVIDERS).map(([id, provider]) => `
+                        <button class="provider-btn ${id === 'provider1' ? 'active' : ''}" 
+                                data-provider="${id}" id="providerBtn_${id}"
+                                ${!appState.activated ? 'disabled' : ''}>
+                            <div class="provider-icon">
+                                <i class="fas ${provider.icon}"></i>
+                            </div>
+                            <div class="provider-info">
+                                <h4>${provider.name}</h4>
+                                <span class="provider-status" id="status_${id}">🔴 Offline</span>
+                            </div>
+                            <div class="provider-action">
+                                <i class="fas fa-arrow-right"></i>
+                            </div>
+                        </button>
+                    `).join('')}
+                </div>
+                <div class="provider-footer">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>Sistema otimizado para alta velocidade</span>
+                </div>
             </div>
         `;
-        
-        // Inserir no painel de playlist
-        const playlistPanel = document.querySelector('.playlist-input');
-        if (playlistPanel) {
-            playlistPanel.innerHTML = '';
-            playlistPanel.appendChild(providerContainer);
-        }
         
         // Adicionar eventos aos botões
         Object.keys(CONFIG.PROVIDERS).forEach(providerId => {
@@ -155,9 +144,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             }
         });
-        
-        // Verificar status dos provedores
-        checkProvidersStatus();
     }
     
     function selectProvider(providerId) {
@@ -170,12 +156,11 @@ document.addEventListener('DOMContentLoaded', function() {
         document.querySelectorAll('.provider-btn').forEach(btn => {
             btn.classList.remove('active');
         });
-        document.getElementById(`providerBtn_${providerId}`).classList.add('active');
+        const activeBtn = document.getElementById(`providerBtn_${providerId}`);
+        if (activeBtn) activeBtn.classList.add('active');
         
-        // Atualizar estado
+        // Atualizar estado e carregar
         appState.currentProvider = providerId;
-        
-        // Carregar playlist
         loadM3UPlaylist(providerId);
     }
     
@@ -195,23 +180,26 @@ document.addEventListener('DOMContentLoaded', function() {
                         statusEl.style.color = 'var(--success)';
                     }
                 });
+                console.log('✅ Backend online');
             }
         } catch (error) {
-            console.log('Backend offline ou em inicialização');
+            console.log('⚠️ Backend offline ou em inicialização');
         }
     }
     
-    // ==================== FUNÇÃO PRINCIPAL DE CARREGAMENTO ====================
+    // ==================== CARREGAMENTO DE PLAYLIST ====================
     async function loadM3UPlaylist(providerName) {
         if (!appState.activated) {
-            showNotification('Ative o sistema primeiro! Clique em "Ativar Sistema"', 'error');
+            showNotification('Ative o sistema primeiro!', 'error');
             return;
         }
         
         try {
             showNotification(`🔄 Conectando ao ${CONFIG.PROVIDERS[providerName].name}...`, 'info');
-            streamStatus.textContent = 'Conectando ao servidor...';
-            streamStatus.style.color = 'var(--warning)';
+            if (streamStatus) {
+                streamStatus.textContent = 'Conectando ao servidor...';
+                streamStatus.style.color = 'var(--warning)';
+            }
             
             // Atualizar status do provedor
             const statusEl = document.getElementById(`status_${providerName}`);
@@ -223,22 +211,20 @@ document.addEventListener('DOMContentLoaded', function() {
             // URL do proxy backend
             const proxyUrl = `${CONFIG.BACKEND_URL}/api/playlist?provider=${providerName}&_=${Date.now()}`;
             
-            console.log('🔗 Conectando ao proxy:', CONFIG.BACKEND_URL);
-            console.log('📡 Provedor selecionado:', providerName);
+            console.log('🔗 Conectando ao proxy:', proxyUrl);
             
             const response = await fetch(proxyUrl, {
                 method: 'GET',
                 headers: {
                     'Accept': 'audio/x-mpegurl, text/plain, */*',
                     'X-API-Key': CONFIG.API_KEY,
-                    'X-Client-Version': 'VISIONSTREAM-PRO/2.0-RENDER'
+                    'X-Client-Version': 'VISIONSTREAM-PRO/2.0'
                 },
                 mode: 'cors',
                 cache: 'no-store'
             });
             
             if (!response.ok) {
-                const errorText = await response.text().catch(() => 'Sem detalhes');
                 throw new Error(`Servidor respondeu com erro ${response.status}`);
             }
             
@@ -255,7 +241,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // Parse da lista M3U
             const parsed = parseM3U(m3uContent);
-            appState.channels = parsed.channels;
+            appState.channels = parsed.channels.map((ch, idx) => ({ ...ch, index: idx }));
             appState.categories = parsed.categories;
             appState.currentPlaylist = proxyUrl;
             appState.currentProvider = providerName;
@@ -264,11 +250,13 @@ document.addEventListener('DOMContentLoaded', function() {
             updateChannelsDisplay();
             updateCategoriesTabs();
             
-            channelCount.textContent = appState.channels.length;
-            categoryCount.textContent = appState.categories.length;
+            if (channelCount) channelCount.textContent = appState.channels.length;
+            if (categoryCount) categoryCount.textContent = appState.categories.length;
             
             const now = new Date();
-            lastUpdate.textContent = now.toLocaleTimeString('pt-BR') + ' - ' + now.toLocaleDateString('pt-BR');
+            if (lastUpdate) {
+                lastUpdate.textContent = now.toLocaleTimeString('pt-BR') + ' - ' + now.toLocaleDateString('pt-BR');
+            }
             
             // Atualizar status do provedor
             if (statusEl) {
@@ -276,15 +264,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 statusEl.style.color = 'var(--success)';
             }
             
-            showNotification(`✅ ${CONFIG.PROVIDERS[providerName].name} carregado! ${appState.channels.length} canais disponíveis.`, 'success');
-            streamStatus.textContent = `Conectado - ${appState.channels.length} canais`;
-            streamStatus.style.color = 'var(--success)';
+            showNotification(`✅ ${appState.channels.length} canais carregados!`, 'success');
+            if (streamStatus) {
+                streamStatus.textContent = `Conectado - ${appState.channels.length} canais`;
+                streamStatus.style.color = 'var(--success)';
+            }
             
             // Salvar no localStorage
-            saveToLocalStorage('visionstream_lastPlaylist', proxyUrl);
             saveToLocalStorage('visionstream_channels', appState.channels);
             saveToLocalStorage('visionstream_categories', appState.categories);
             saveToLocalStorage('visionstream_lastProvider', providerName);
+            saveToLocalStorage('visionstream_lastUpdate', now.toISOString());
             
         } catch (error) {
             console.error('❌ Erro ao carregar playlist:', error);
@@ -308,15 +298,17 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             showNotification(userMessage, 'error');
-            streamStatus.textContent = 'Falha na conexão';
-            streamStatus.style.color = 'var(--danger)';
+            if (streamStatus) {
+                streamStatus.textContent = 'Falha na conexão';
+                streamStatus.style.color = 'var(--danger)';
+            }
             
             // Tentar carregar do cache
             loadFromLocalStorage();
         }
     }
     
-    // ==================== FUNÇÕES DO SISTEMA DE ATIVAÇÃO ====================
+    // ==================== SISTEMA DE ATIVAÇÃO ====================
     function isValidMAC(mac) {
         const macPattern = /^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$/;
         return macPattern.test(mac);
@@ -327,77 +319,87 @@ document.addEventListener('DOMContentLoaded', function() {
         return keyPattern.test(key);
     }
     
-    activateBtn.addEventListener('click', function() {
-        const mac = macInput.value.trim();
-        const key = keyInput.value.trim();
-        
-        if (!isValidMAC(mac)) {
-            statusText.textContent = 'MAC inválido! Use: AA:BB:CC:DD:EE:FF';
-            statusText.style.color = 'var(--danger)';
-            showNotification('Formato MAC inválido!', 'error');
-            return;
-        }
-        
-        if (!isValidKey(key)) {
-            statusText.textContent = 'KEY inválida! Use: VISION-XXXX-XXXX';
-            statusText.style.color = 'var(--danger)';
-            showNotification('Formato KEY inválido!', 'error');
-            return;
-        }
-        
-        // Ativação bem-sucedida
-        appState.activated = true;
-        statusText.textContent = 'Sistema ativado com sucesso!';
-        statusText.style.color = 'var(--success)';
-        
-        // Habilitar botões
-        document.querySelectorAll('.provider-btn').forEach(btn => {
-            btn.disabled = false;
-            btn.style.opacity = '1';
+    if (activateBtn) {
+        activateBtn.addEventListener('click', function() {
+            const mac = macInput ? macInput.value.trim() : 'A1:B2:C3:D4:E5:F6';
+            const key = keyInput ? keyInput.value.trim() : 'VISION-7A3B-9C2D';
+            
+            if (!isValidMAC(mac)) {
+                if (statusText) {
+                    statusText.textContent = 'MAC inválido! Use: AA:BB:CC:DD:EE:FF';
+                    statusText.style.color = 'var(--danger)';
+                }
+                showNotification('Formato MAC inválido!', 'error');
+                return;
+            }
+            
+            if (!isValidKey(key)) {
+                if (statusText) {
+                    statusText.textContent = 'KEY inválida! Use: VISION-XXXX-XXXX';
+                    statusText.style.color = 'var(--danger)';
+                }
+                showNotification('Formato KEY inválido!', 'error');
+                return;
+            }
+            
+            // Ativação bem-sucedida
+            appState.activated = true;
+            if (statusText) {
+                statusText.textContent = 'Sistema ativado com sucesso!';
+                statusText.style.color = 'var(--success)';
+            }
+            
+            // Habilitar botões de provedor
+            document.querySelectorAll('.provider-btn').forEach(btn => {
+                btn.disabled = false;
+                btn.style.opacity = '1';
+            });
+            
+            // Animação de confirmação
+            activateBtn.innerHTML = '<i class="fas fa-check"></i> Sistema Ativo';
+            activateBtn.style.background = 'linear-gradient(45deg, var(--success), var(--neon-green))';
+            
+            showNotification('Sistema ativado! Selecione um provedor.', 'success');
         });
-        
-        // Animação de confirmação
-        activateBtn.innerHTML = '<i class="fas fa-check"></i> Sistema Ativo';
-        activateBtn.style.background = 'linear-gradient(45deg, var(--success), var(--neon-green))';
-        
-        showNotification('Sistema ativado! Selecione um provedor para começar.', 'success');
-        
-        // Efeito visual
-        activateBtn.classList.add('activated');
-        setTimeout(() => activateBtn.classList.remove('activated'), 1000);
-    });
+    }
     
-    resetBtn.addEventListener('click', function() {
-        macInput.value = 'A1:B2:C3:D4:E5:F6';
-        keyInput.value = 'VISION-7A3B-9C2D';
-        statusText.textContent = 'Aguardando ativação';
-        statusText.style.color = 'var(--text-secondary)';
-        
-        // Resetar botão
-        activateBtn.innerHTML = '<i class="fas fa-unlock-alt"></i> Ativar Sistema';
-        activateBtn.style.background = '';
-        
-        // Desativar funcionalidades
-        appState.activated = false;
-        document.querySelectorAll('.provider-btn').forEach(btn => {
-            btn.disabled = true;
-            btn.style.opacity = '0.7';
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function() {
+            if (macInput) macInput.value = 'A1:B2:C3:D4:E5:F6';
+            if (keyInput) keyInput.value = 'VISION-7A3B-9C2D';
+            if (statusText) {
+                statusText.textContent = 'Aguardando ativação';
+                statusText.style.color = 'var(--text-secondary)';
+            }
+            
+            // Resetar botão
+            if (activateBtn) {
+                activateBtn.innerHTML = '<i class="fas fa-unlock-alt"></i> Ativar Sistema';
+                activateBtn.style.background = '';
+            }
+            
+            // Desativar funcionalidades
+            appState.activated = false;
+            document.querySelectorAll('.provider-btn').forEach(btn => {
+                btn.disabled = true;
+                btn.style.opacity = '0.7';
+            });
+            
+            // Limpar lista
+            appState.channels = [];
+            appState.categories = [];
+            updateChannelsDisplay();
+            updateCategoriesTabs();
+            
+            if (channelCount) channelCount.textContent = '0';
+            if (categoryCount) categoryCount.textContent = '0';
+            if (lastUpdate) lastUpdate.textContent = 'Nunca';
+            
+            showNotification('Sistema resetado!', 'info');
         });
-        
-        // Limpar lista
-        appState.channels = [];
-        appState.categories = [];
-        updateChannelsDisplay();
-        updateCategoriesTabs();
-        
-        channelCount.textContent = '0';
-        categoryCount.textContent = '0';
-        lastUpdate.textContent = 'Nunca';
-        
-        showNotification('Sistema resetado!', 'info');
-    });
+    }
     
-    // ==================== FUNÇÕES DE CANAIS E CATEGORIAS ====================
+    // ==================== PARSE M3U ====================
     function parseM3U(content) {
         const lines = content.split('\n');
         const channels = [];
@@ -475,7 +477,10 @@ document.addEventListener('DOMContentLoaded', function() {
         };
     }
     
+    // ==================== EXIBIÇÃO DE CANAIS ====================
     function updateChannelsDisplay() {
+        if (!channelsGrid) return;
+        
         channelsGrid.innerHTML = '';
         
         if (appState.channels.length === 0) {
@@ -556,6 +561,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function updateCategoriesTabs() {
+        if (!categoriesTabs) return;
+        
         categoriesTabs.innerHTML = '';
         
         // Botão "Todos"
@@ -589,200 +596,116 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // ==================== PLAYER DE VÍDEO ====================
-function playChannel(channel) {
-    if (!channel.url) {
-        showNotification('URL do canal inválida!', 'error');
-        return;
-    }
-    
-    console.log('🎬 Iniciando reprodução do canal:', channel.name);
-    console.log('🔗 URL:', channel.url);
-    
-    currentChannel.textContent = channel.name;
-    streamStatus.textContent = 'Configurando player...';
-    streamStatus.style.color = 'var(--warning)';
-    
-    playerPlaceholder.style.display = 'none';
-    videoPlayer.style.display = 'block';
-    
-    // Destruir HLS anterior
-    if (window.hlsInstance) {
-        window.hlsInstance.destroy();
-        window.hlsInstance = null;
-    }
-    
-    // Limpar src atual
-    videoPlayer.src = '';
-    videoPlayer.removeAttribute('src');
-    videoPlayer.load();
-    
-    // Remover eventos antigos
-    videoPlayer.onerror = null;
-    videoPlayer.oncanplay = null;
-    
-    // Remover overlay se existir
-    const playOverlay = document.getElementById('playOverlay');
-    if (playOverlay) playOverlay.remove();
-    
-    // Verificar se é um formato suportado
-    const url = channel.url.toLowerCase();
-    const isM3U8 = url.includes('.m3u8');
-    const isMpegTS = url.includes('.ts') || url.includes('mpegts');
-    const isStream = url.includes('/live/') || url.includes('/stream/');
-    
-    console.log('📊 Detecção de formato:', {
-        isM3U8, isMpegTS, isStream, url
-    });
-    
-    // SEMPRE tentar usar HLS.js primeiro (mais compatível)
-    if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-        console.log('🚀 Usando HLS.js');
-        startHLSPlayback(channel);
-    } 
-    // Fallback para iOS/Safari (HLS nativo)
-    else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-        console.log('🍎 Usando HLS nativo (Safari/iOS)');
-        startNativeHLS(channel);
-    }
-    // Fallback para streams diretos
-    else {
-        console.log('🔧 Usando reprodução direta');
-        startDirectPlayback(channel);
-    }
-    
-    appState.currentChannel = channel;
-    saveToLocalStorage('visionstream_lastChannel', channel);
-    
-    // Destacar canal selecionado na lista
-    document.querySelectorAll('.channel-card').forEach(card => {
-        card.classList.remove('playing');
-    });
-    
-    const clickedCard = document.querySelector(`.channel-card[data-index="${channel.index}"]`);
-    if (clickedCard) {
-        clickedCard.classList.add('playing');
-    }
-}
-    // ==================== FUNÇÕES DE REPRODUÇÃO ====================
-
-function startHLSPlayback(channel) {
-    try {
-        window.hlsInstance = new Hls({
-            enableWorker: true,
-            lowLatencyMode: true,
-            backBufferLength: 90,
-            maxBufferLength: 30,
-            maxMaxBufferLength: 60,
-            maxBufferSize: 60 * 1000 * 1000, // 60MB
-            maxBufferHole: 0.5,
-            manifestLoadingTimeOut: 10000,
-            manifestLoadingMaxRetry: 3,
-            manifestLoadingRetryDelay: 500,
-            levelLoadingTimeOut: 10000,
-            levelLoadingMaxRetry: 3,
-            levelLoadingRetryDelay: 500,
-            fragLoadingTimeOut: 20000,
-            fragLoadingMaxRetry: 6,
-            fragLoadingRetryDelay: 500
-        });
-        
-        window.hlsInstance.loadSource(channel.url);
-        window.hlsInstance.attachMedia(videoPlayer);
-        
-        window.hlsInstance.on(Hls.Events.MANIFEST_PARSED, function() {
-            console.log('✅ Manifesto HLS carregado');
-            attemptAutoPlay();
-        });
-        
-        window.hlsInstance.on(Hls.Events.ERROR, function(event, data) {
-            console.error('❌ Erro HLS:', data);
-            
-            if (data.fatal) {
-                switch(data.type) {
-                    case Hls.ErrorTypes.NETWORK_ERROR:
-                        console.log('🔄 Tentando reconectar...');
-                        window.hlsInstance.startLoad();
-                        break;
-                    case Hls.ErrorTypes.MEDIA_ERROR:
-                        console.log('🔄 Recuperando erro de mídia...');
-                        window.hlsInstance.recoverMediaError();
-                        break;
-                    default:
-                        console.log('⚠️ Erro fatal, tentando método alternativo...');
-                        window.hlsInstance.destroy();
-                        startNativeHLS(channel);
-                        break;
-                }
-            }
-        });
-        
-    } catch (error) {
-        console.error('❌ Erro ao inicializar HLS:', error);
-        startNativeHLS(channel);
-    }
-}
-
-function startNativeHLS(channel) {
-    console.log('🔧 Configurando HLS nativo');
-    
-    // Para Safari/iOS
-    videoPlayer.src = channel.url;
-    
-    if (channel.url.includes('.m3u8')) {
-        videoPlayer.type = 'application/vnd.apple.mpegurl';
-    }
-    
-    videoPlayer.load();
-    
-    videoPlayer.addEventListener('loadedmetadata', function() {
-        console.log('✅ Metadados carregados (HLS nativo)');
-        attemptAutoPlay();
-    });
-    
-    videoPlayer.addEventListener('error', function(e) {
-        console.error('❌ Erro no HLS nativo:', videoPlayer.error);
-        showNotification(`Erro: ${getVideoError(videoPlayer.error)}`, 'error');
-        streamStatus.textContent = 'Erro de reprodução';
-        streamStatus.style.color = 'var(--danger)';
-    });
-}
-
-function startDirectPlayback(channel) {
-    console.log('🔧 Configurando reprodução direta');
-    
-    videoPlayer.src = channel.url;
-    videoPlayer.load();
-    
-    videoPlayer.addEventListener('canplay', function() {
-        console.log('✅ Vídeo pronto para reprodução');
-        attemptAutoPlay();
-    });
-    
-    videoPlayer.addEventListener('error', function(e) {
-        console.error('❌ Erro na reprodução direta:', videoPlayer.error);
-        
-        // Tentar forçar como HLS mesmo sem extensão .m3u8
-        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
-            console.log('🔄 Tentando forçar como HLS...');
-            startHLSPlayback(channel);
-        } else {
-            showNotification(`Erro: ${getVideoError(videoPlayer.error)}`, 'error');
-            streamStatus.textContent = 'Formato não suportado';
-            streamStatus.style.color = 'var(--danger)';
+    function playChannel(channel) {
+        if (!channel.url || !videoPlayer) {
+            showNotification('URL do canal inválida!', 'error');
+            return;
         }
-    });
-}
-
-function attemptAutoPlay() {
-    console.log('🎯 Tentando autoplay...');
+        
+        console.log('🎬 Reproduzindo canal:', channel.name);
+        
+        if (currentChannel) currentChannel.textContent = channel.name;
+        if (streamStatus) {
+            streamStatus.textContent = 'Conectando...';
+            streamStatus.style.color = 'var(--warning)';
+        }
+        
+        if (playerPlaceholder) playerPlaceholder.style.display = 'none';
+        videoPlayer.style.display = 'block';
+        
+        // Destruir HLS anterior
+        if (hls) {
+            hls.destroy();
+            hls = null;
+        }
+        
+        // Limpar overlay
+        const playOverlay = document.getElementById('playOverlay');
+        if (playOverlay) playOverlay.remove();
+        
+        // Remover src atual
+        videoPlayer.src = '';
+        videoPlayer.removeAttribute('src');
+        
+        // Verificar formato
+        const url = channel.url.toLowerCase();
+        const isM3U8 = url.includes('.m3u8');
+        
+        console.log('📊 Formato detectado:', { isM3U8, url: channel.url });
+        
+        // Usar HLS.js se disponível
+        if (typeof Hls !== 'undefined' && Hls.isSupported()) {
+            console.log('🚀 Usando HLS.js');
+            
+            hls = new Hls({
+                enableWorker: true,
+                lowLatencyMode: true,
+                backBufferLength: 90
+            });
+            
+            hls.loadSource(channel.url);
+            hls.attachMedia(videoPlayer);
+            
+            hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                console.log('✅ Manifesto HLS carregado');
+                attemptAutoPlay();
+            });
+            
+            hls.on(Hls.Events.ERROR, function(event, data) {
+                console.error('❌ Erro HLS:', data);
+                if (data.fatal) {
+                    switch(data.type) {
+                        case Hls.ErrorTypes.NETWORK_ERROR:
+                            hls.startLoad();
+                            break;
+                        case Hls.ErrorTypes.MEDIA_ERROR:
+                            hls.recoverMediaError();
+                            break;
+                        default:
+                            tryDirectPlay(channel.url);
+                            break;
+                    }
+                }
+            });
+            
+        } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl') && isM3U8) {
+            console.log('🍎 Usando HLS nativo');
+            videoPlayer.src = channel.url;
+            videoPlayer.addEventListener('loadedmetadata', attemptAutoPlay);
+            videoPlayer.addEventListener('error', handleVideoError);
+        } else {
+            console.log('🔧 Usando reprodução direta');
+            tryDirectPlay(channel.url);
+        }
+        
+        appState.currentChannel = channel;
+        saveToLocalStorage('visionstream_lastChannel', channel);
+        
+        // Destacar canal selecionado
+        document.querySelectorAll('.channel-card').forEach(card => {
+            card.classList.remove('playing');
+        });
+        const clickedCard = document.querySelector(`.channel-card[data-index="${channel.index}"]`);
+        if (clickedCard) clickedCard.classList.add('playing');
+    }
     
-    const playPromise = videoPlayer.play();
+    function tryDirectPlay(url) {
+        videoPlayer.src = url;
+        videoPlayer.load();
+        
+        videoPlayer.addEventListener('canplay', attemptAutoPlay);
+        videoPlayer.addEventListener('error', handleVideoError);
+    }
     
-    if (playPromise !== undefined) {
-        playPromise.then(() => {
+    function attemptAutoPlay() {
+        console.log('🎯 Tentando autoplay...');
+        
+        videoPlayer.play().then(() => {
             console.log('✅ Autoplay bem-sucedido!');
-            streamStatus.textContent = 'Transmitindo';
-            streamStatus.style.color = 'var(--success)';
+            if (streamStatus) {
+                streamStatus.textContent = 'Transmitindo';
+                streamStatus.style.color = 'var(--success)';
+            }
             showNotification(`Assistindo: ${appState.currentChannel.name}`, 'success');
             
             // Remover overlay
@@ -792,227 +715,103 @@ function attemptAutoPlay() {
         }).catch(error => {
             console.log('⚠️ Autoplay bloqueado:', error.name);
             
-            // Configurar para play no clique
-            streamStatus.textContent = '▶ Clique para reproduzir';
-            streamStatus.style.color = 'var(--warning)';
-            
-            // Adicionar overlay visual
-            addPlayOverlay();
-            
-            // Permitir play no clique
-            videoPlayer.style.cursor = 'pointer';
-            videoPlayer.addEventListener('click', handleVideoClick);
-        });
-    }
-}
-
-function handleVideoClick() {
-    videoPlayer.play().then(() => {
-        console.log('✅ Reprodução iniciada por clique');
-        streamStatus.textContent = 'Transmitindo';
-        streamStatus.style.color = 'var(--success)';
-        
-        const playOverlay = document.getElementById('playOverlay');
-        if (playOverlay) playOverlay.remove();
-        
-        videoPlayer.style.cursor = '';
-        videoPlayer.removeEventListener('click', handleVideoClick);
-        
-    }).catch(error => {
-        console.error('❌ Erro ao reproduzir após clique:', error);
-        showNotification('Não foi possível reproduzir. Tente outro canal.', 'error');
-    });
-}
-
-function getVideoError(error) {
-    if (!error) return 'Erro desconhecido';
-    
-    switch(error.code) {
-        case 1: return 'Acesso à mídia cancelado';
-        case 2: return 'Rede indisponível';
-        case 3: return 'Formato não suportado';
-        case 4: return 'URL do vídeo inválida';
-        default: return `Erro ${error.code}`;
-    }
-}
-    // MOSTRAR BOTÃO PLAY SE AUTOPLAY FALHAR
-    const playHandler = () => {
-        videoPlayer.play().then(() => {
-            streamStatus.textContent = 'Transmitindo (HLS)';
-            streamStatus.style.color = 'var(--success)';
-            showNotification(`Assistindo: ${channel.name}`, 'success');
-            
-            // Remover o overlay se existir
-            const playOverlay = document.getElementById('playOverlay');
-            if (playOverlay) playOverlay.remove();
-            
-            // Remover este listener após sucesso
-            videoPlayer.removeEventListener('click', playHandler);
-            
-        }).catch(e => {
-            console.log('Autoplay bloqueado, aguardando interação');
-            streamStatus.textContent = 'Clique para reproduzir';
-            streamStatus.style.color = 'var(--warning)';
-            
-            // Adicionar overlay de play
-            addPlayOverlay();
-        });
-    };
-    
-    // Tentar autoplay primeiro
-    videoPlayer.play().then(() => {
-        streamStatus.textContent = 'Transmitindo (HLS)';
-        streamStatus.style.color = 'var(--success)';
-        showNotification(`Assistindo: ${channel.name}`, 'success');
-    }).catch(e => {
-        console.log('Autoplay bloqueado pelo navegador');
-        
-        // Configurar para play no clique
-        streamStatus.textContent = '▶ Clique para reproduzir';
-        streamStatus.style.color = 'var(--warning)';
-        
-        // Adicionar overlay de play
-        addPlayOverlay();
-        
-        // Permitir play no clique do vídeo
-        videoPlayer.style.cursor = 'pointer';
-        videoPlayer.addEventListener('click', playHandler);
-    });
-});
-                
-                hls.on(Hls.Events.ERROR, function(event, data) {
-                    console.error('HLS Error:', data);
-                    if (data.fatal) {
-                        switch(data.type) {
-                            case Hls.ErrorTypes.NETWORK_ERROR:
-                                showNotification('Erro de rede', 'error');
-                                break;
-                            case Hls.ErrorTypes.MEDIA_ERROR:
-                                hls.recoverMediaError();
-                                break;
-                            default:
-                                tryDirectPlay(channel.url);
-                                break;
-                        }
-                    }
-                });
-            } else if (videoPlayer.canPlayType('application/vnd.apple.mpegurl')) {
-                tryDirectPlay(channel.url);
-            } else {
-                showNotification('Navegador incompatível com HLS', 'error');
-                streamStatus.textContent = 'Incompatível';
-                streamStatus.style.color = 'var(--danger)';
+            if (streamStatus) {
+                streamStatus.textContent = '▶ Clique para reproduzir';
+                streamStatus.style.color = 'var(--warning)';
             }
-        } else {
-            tryDirectPlay(channel.url);
-        }
-        
-        appState.currentChannel = channel;
-        saveToLocalStorage('visionstream_lastChannel', channel);
-    }
-    
-    function tryDirectPlay(url) {
-        videoPlayer.src = url;
-        videoPlayer.load();
-        
-        if (url.includes('.mp4')) {
-            videoPlayer.type = 'video/mp4';
-        } else if (url.includes('.m3u8')) {
-            videoPlayer.type = 'application/vnd.apple.mpegurl';
-        }
-        
-        // Tentar autoplay
-videoPlayer.play().then(() => {
-    streamStatus.textContent = 'Transmitindo';
-    streamStatus.style.color = 'var(--success)';
-    showNotification(`Stream iniciado: ${appState.currentChannel.name}`, 'success');
-    
-    // Remover overlay se existir
-    const playOverlay = document.getElementById('playOverlay');
-    if (playOverlay) playOverlay.remove();
-    
-}).catch(e => {
-    console.log('Autoplay bloqueado para stream direto');
-    
-    // Mostrar instrução para o usuário
-    streamStatus.textContent = '▶ Clique no vídeo para reproduzir';
-    streamStatus.style.color = 'var(--warning)';
-    
-    // Adicionar overlay de play
-    addPlayOverlay();
-    
-    // Configurar play no clique
-    videoPlayer.style.cursor = 'pointer';
-    videoPlayer.addEventListener('click', function playOnClick() {
-        videoPlayer.play().then(() => {
-            streamStatus.textContent = 'Transmitindo';
-            streamStatus.style.color = 'var(--success)';
             
-            const playOverlay = document.getElementById('playOverlay');
-            if (playOverlay) playOverlay.remove();
-            
-            videoPlayer.removeEventListener('click', playOnClick);
-            videoPlayer.style.cursor = '';
-            
-        }).catch(err => {
-            console.error('Erro ao reproduzir após clique:', err);
-            showNotification('Erro ao reproduzir. Tente outro canal.', 'error');
+            addPlayOverlay();
         });
-    });
-});
-        // ==================== OVERLAY DE PLAY ====================
-function addPlayOverlay() {
-    // Remover overlay existente
-    const existingOverlay = document.getElementById('playOverlay');
-    if (existingOverlay) existingOverlay.remove();
-    
-    // Criar overlay
-    const overlay = document.createElement('div');
-    overlay.id = 'playOverlay';
-    overlay.className = 'play-overlay';
-    
-    // Adicionar ao container do player
-    const playerContainer = document.querySelector('.video-container') || videoPlayer.parentElement;
-    if (playerContainer) {
-        playerContainer.style.position = 'relative';
-        playerContainer.appendChild(overlay);
     }
     
-    // Configurar clique
-    overlay.addEventListener('click', function(e) {
-        e.stopPropagation();
-        handleVideoClick();
-    });
-}
-    // Adicionar ao container do player
-    const playerContainer = document.querySelector('.video-container');
-    if (playerContainer) {
-        playerContainer.style.position = 'relative';
-        playerContainer.appendChild(overlay);
+    function handleVideoError() {
+        console.error('❌ Erro no vídeo:', videoPlayer.error);
+        
+        let errorMsg = 'Erro ao carregar vídeo';
+        if (videoPlayer.error) {
+            switch(videoPlayer.error.code) {
+                case 1: errorMsg = 'Acesso cancelado'; break;
+                case 2: errorMsg = 'Erro de rede'; break;
+                case 3: errorMsg = 'Formato não suportado'; break;
+                case 4: errorMsg = 'URL inválida'; break;
+            }
+        }
+        
+        showNotification(errorMsg, 'error');
+        if (streamStatus) {
+            streamStatus.textContent = 'Erro de reprodução';
+            streamStatus.style.color = 'var(--danger)';
+        }
     }
     
-    // Configurar clique no overlay
-    overlay.addEventListener('click', function() {
-        const video = document.getElementById('videoPlayer');
-        if (video) {
-            video.play().then(() => {
+    function addPlayOverlay() {
+        // Remover existente
+        const existing = document.getElementById('playOverlay');
+        if (existing) existing.remove();
+        
+        // Criar overlay
+        const overlay = document.createElement('div');
+        overlay.id = 'playOverlay';
+        overlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            cursor: pointer;
+            border-radius: 12px;
+        `;
+        
+        overlay.innerHTML = `
+            <div style="
+                background: var(--card-bg);
+                padding: 30px;
+                border-radius: 20px;
+                text-align: center;
+                border: 2px solid var(--neon-purple);
+                box-shadow: 0 0 30px rgba(147,51,234,0.5);
+            ">
+                <div style="
+                    font-size: 60px;
+                    color: var(--neon-green);
+                    margin-bottom: 20px;
+                    animation: pulse 1.5s infinite;
+                ">
+                    ▶
+                </div>
+                <h3 style="
+                    color: var(--neon-purple);
+                    margin: 0 0 10px 0;
+                    font-size: 24px;
+                ">
+                    CLIQUE PARA REPRODUZIR
+                </h3>
+                <p style="color: var(--text-secondary); margin: 0;">
+                    O navegador requer uma interação para iniciar o vídeo
+                </p>
+            </div>
+        `;
+        
+        // Adicionar ao container
+        const container = videoPlayer.parentElement;
+        if (container) {
+            container.style.position = 'relative';
+            container.appendChild(overlay);
+        }
+        
+        // Configurar clique
+        overlay.addEventListener('click', function() {
+            videoPlayer.play().then(() => {
                 overlay.remove();
-                showNotification('Reprodução iniciada!', 'success');
             }).catch(e => {
                 console.error('Erro ao reproduzir:', e);
-                showNotification('Erro ao reproduzir. Tente novamente.', 'error');
             });
-        }
-    });
-
-        }
-        
-        videoPlayer.onerror = function() {
-            console.error('Erro no vídeo:', videoPlayer.error);
-            streamStatus.textContent = 'Erro ao carregar';
-            streamStatus.style.color = 'var(--danger)';
-            showNotification(`Erro no canal: ${videoPlayer.error?.code || 'DESCONHECIDO'}`, 'error');
-        };
+        });
     }
     
     // ==================== LOCALSTORAGE ====================
@@ -1025,7 +824,7 @@ function addPlayOverlay() {
             const lastUpdateTime = getFromLocalStorage('visionstream_lastUpdate');
             
             if (channels && channels.length > 0) {
-                appState.channels = channels;
+                appState.channels = channels.map((ch, idx) => ({ ...ch, index: idx }));
                 appState.categories = categories || ['Geral'];
                 
                 if (lastChannel) appState.currentChannel = lastChannel;
@@ -1034,25 +833,31 @@ function addPlayOverlay() {
                 updateChannelsDisplay();
                 updateCategoriesTabs();
                 
-                channelCount.textContent = appState.channels.length;
-                categoryCount.textContent = appState.categories.length;
+                if (channelCount) channelCount.textContent = appState.channels.length;
+                if (categoryCount) categoryCount.textContent = appState.categories.length;
                 
-                if (lastUpdateTime) {
+                if (lastUpdateTime && lastUpdate) {
                     const date = new Date(lastUpdateTime);
                     lastUpdate.textContent = date.toLocaleTimeString('pt-BR') + ' - ' + date.toLocaleDateString('pt-BR');
-                } else {
+                } else if (lastUpdate) {
                     lastUpdate.textContent = 'Do cache local';
                 }
                 
-                // Ativar automaticamente
+                // Ativar automaticamente se houver dados
                 appState.activated = true;
-                statusText.textContent = 'Sistema ativado (cache)';
-                statusText.style.color = 'var(--success)';
+                if (statusText) {
+                    statusText.textContent = 'Sistema ativado (cache)';
+                    statusText.style.color = 'var(--success)';
+                }
                 
-                showNotification('Dados carregados do cache', 'info');
+                // Habilitar botões
+                document.querySelectorAll('.provider-btn').forEach(btn => {
+                    btn.disabled = false;
+                    btn.style.opacity = '1';
+                });
             }
         } catch (e) {
-            console.error('Erro ao carregar do localStorage:', e);
+            console.error('Erro ao carregar cache:', e);
         }
     }
     
@@ -1060,7 +865,7 @@ function addPlayOverlay() {
         try {
             localStorage.setItem(key, JSON.stringify(data));
         } catch (e) {
-            console.error('Erro ao salvar no localStorage:', e);
+            console.error('Erro ao salvar no cache:', e);
         }
     }
     
@@ -1069,23 +874,21 @@ function addPlayOverlay() {
             const data = localStorage.getItem(key);
             return data ? JSON.parse(data) : null;
         } catch (e) {
-            console.error('Erro ao ler do localStorage:', e);
+            console.error('Erro ao ler cache:', e);
             return null;
         }
     }
     
     // ==================== NOTIFICAÇÕES ====================
     function showNotification(message, type = 'info') {
-        const existingNotification = document.querySelector('.notification');
-        if (existingNotification) {
-            existingNotification.style.animation = 'slideOutRight 0.3s ease';
-            setTimeout(() => {
-                if (existingNotification.parentNode) {
-                    existingNotification.remove();
-                }
-            }, 300);
+        // Remover existente
+        const existing = document.querySelector('.notification');
+        if (existing) {
+            existing.style.animation = 'slideOutRight 0.3s ease';
+            setTimeout(() => existing.remove(), 300);
         }
         
+        // Criar nova
         const notification = document.createElement('div');
         notification.className = `notification notification-${type}`;
         
@@ -1101,123 +904,122 @@ function addPlayOverlay() {
         
         document.body.appendChild(notification);
         
+        // Remover após 5 segundos
         setTimeout(() => {
             if (notification.parentNode) {
                 notification.style.animation = 'slideOutRight 0.3s ease';
-                setTimeout(() => {
-                    if (notification.parentNode) {
-                        notification.remove();
-                    }
-                }, 300);
+                setTimeout(() => notification.remove(), 300);
             }
         }, 5000);
     }
     
     // ==================== EVENT LISTENERS ====================
-    reloadBtn.addEventListener('click', () => {
-        if (appState.currentProvider) {
-            loadM3UPlaylist(appState.currentProvider);
-        } else {
-            showNotification('Selecione um provedor primeiro', 'error');
-        }
-    });
+    if (reloadBtn) {
+        reloadBtn.addEventListener('click', () => {
+            if (appState.currentProvider) {
+                loadM3UPlaylist(appState.currentProvider);
+            } else {
+                showNotification('Selecione um provedor primeiro', 'error');
+            }
+        });
+    }
     
-    channelSearch.addEventListener('input', () => {
-        appState.searchTerm = channelSearch.value;
-        updateChannelsDisplay();
-    });
-    
-    channelSearch.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+    if (channelSearch) {
+        channelSearch.addEventListener('input', () => {
             appState.searchTerm = channelSearch.value;
             updateChannelsDisplay();
-        }
-    });
+        });
+    }
     
-    fullscreenBtn.addEventListener('click', () => {
-        const elem = videoPlayer;
-        
-        if (!document.fullscreenElement) {
-            if (elem.requestFullscreen) {
-                elem.requestFullscreen();
-            } else if (elem.mozRequestFullScreen) {
-                elem.mozRequestFullScreen();
-            } else if (elem.webkitRequestFullscreen) {
-                elem.webkitRequestFullscreen();
-            } else if (elem.msRequestFullscreen) {
-                elem.msRequestFullscreen();
+    if (fullscreenBtn) {
+        fullscreenBtn.addEventListener('click', () => {
+            const elem = videoPlayer;
+            
+            if (!document.fullscreenElement) {
+                if (elem.requestFullscreen) elem.requestFullscreen();
+                else if (elem.mozRequestFullScreen) elem.mozRequestFullScreen();
+                else if (elem.webkitRequestFullscreen) elem.webkitRequestFullscreen();
+                else if (elem.msRequestFullscreen) elem.msRequestFullscreen();
+                
+                fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i> Sair da Tela Cheia';
+            } else {
+                if (document.exitFullscreen) document.exitFullscreen();
+                fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i> Tela Cheia';
             }
-            fullscreenBtn.innerHTML = '<i class="fas fa-compress"></i> Sair da Tela Cheia';
-        } else {
-            if (document.exitFullscreen) {
-                document.exitFullscreen();
-            }
-            fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i> Tela Cheia';
-        }
-    });
-    
-    document.addEventListener('fullscreenchange', () => {
-        if (!document.fullscreenElement) {
-            fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i> Tela Cheia';
-        }
-    });
-    
-    exportBtn.addEventListener('click', () => {
-        if (appState.channels.length === 0) {
-            showNotification('Nenhuma lista para exportar', 'error');
-            return;
-        }
-        
-        let m3uContent = '#EXTM3U\n';
-        m3uContent += `#PLAYLIST: VISIONSTREAM PRO Export\n`;
-        m3uContent += `#EXTGRP:${appState.categories.join(';')}\n`;
-        
-        appState.channels.forEach(channel => {
-            m3uContent += `#EXTINF:-1 tvg-id="" tvg-name="${channel.name}" tvg-logo="${channel.logo}" group-title="${channel.group}",${channel.name}\n`;
-            m3uContent += `${channel.url}\n`;
         });
         
-        const blob = new Blob([m3uContent], { type: 'audio/x-mpegurl;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `visionstream_${new Date().toISOString().slice(0,10)}.m3u`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        document.addEventListener('fullscreenchange', () => {
+            if (!document.fullscreenElement && fullscreenBtn) {
+                fullscreenBtn.innerHTML = '<i class="fas fa-expand"></i> Tela Cheia';
+            }
+        });
+    }
+    
+    if (exportBtn) {
+        exportBtn.addEventListener('click', () => {
+            if (appState.channels.length === 0) {
+                showNotification('Nenhuma lista para exportar', 'error');
+                return;
+            }
+            
+            let m3uContent = '#EXTM3U\n';
+            appState.channels.forEach(channel => {
+                m3uContent += `#EXTINF:-1 tvg-id="" tvg-name="${channel.name}" tvg-logo="${channel.logo}" group-title="${channel.group}",${channel.name}\n`;
+                m3uContent += `${channel.url}\n`;
+            });
+            
+            const blob = new Blob([m3uContent], { type: 'audio/x-mpegurl' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `visionstream_${new Date().toISOString().slice(0,10)}.m3u`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showNotification('Lista exportada!', 'success');
+        });
+    }
+    
+    if (instructionsBtn && instructionsModal && closeModal) {
+        instructionsBtn.addEventListener('click', () => {
+            instructionsModal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        });
         
-        showNotification('Lista exportada com sucesso!', 'success');
-    });
-    
-    instructionsBtn.addEventListener('click', () => {
-        instructionsModal.classList.add('active');
-        document.body.style.overflow = 'hidden';
-    });
-    
-    closeModal.addEventListener('click', () => {
-        instructionsModal.classList.remove('active');
-        document.body.style.overflow = '';
-    });
-    
-    instructionsModal.addEventListener('click', (e) => {
-        if (e.target === instructionsModal) {
+        closeModal.addEventListener('click', () => {
             instructionsModal.classList.remove('active');
             document.body.style.overflow = '';
-        }
-    });
+        });
+        
+        instructionsModal.addEventListener('click', (e) => {
+            if (e.target === instructionsModal) {
+                instructionsModal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && instructionsModal.classList.contains('active')) {
+                instructionsModal.classList.remove('active');
+                document.body.style.overflow = '';
+            }
+        });
+    }
     
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && instructionsModal.classList.contains('active')) {
-            instructionsModal.classList.remove('active');
-            document.body.style.overflow = '';
-        }
-    });
-    
-    // ==================== INICIALIZAÇÃO ====================
+    // ==================== INICIALIZAR ====================
     initSystem();
     
-    // Funções globais
+    // Expor funções globais
     window.parseM3U = parseM3U;
     window.showNotification = showNotification;
-});
+    window.playChannel = playChannel;
+}
+
+// Inicializar quando o DOM estiver pronto
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initVisionStream);
+} else {
+    initVisionStream();
+}
