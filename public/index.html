@@ -1029,162 +1029,44 @@
                     showPlayOverlay();
                 });
             }
-            // No arquivo index.html, na função playChannel (~linha 1008)
-// ONDE cria o HLS, adicione:
-
+           // Configuração OTIMIZADA do HLS
 hls = new Hls({
     enableWorker: true,
-    lowLatencyMode: true,
-    backBufferLength: 90,
-    maxBufferLength: 30,           // REDUZIDO
-    maxMaxBufferLength: 60,        // REDUZIDO  
-    maxBufferSize: 60 * 1000 * 1000, // 60MB máximo
-    maxBufferHole: 0.5,
+    enableSoftwareAES: true,
+    debug: false,
     
-    // Configurações para evitar buffer stall
+    // Buffer otimizado
+    maxBufferSize: 60 * 1000 * 1000, // 60MB
+    maxBufferLength: 30,
+    maxMaxBufferLength: 60,
     liveSyncDurationCount: 3,
     liveMaxLatencyDurationCount: 10,
+    
+    // Qualidade/ABR
     abrEwmaFastLive: 3,
     abrEwmaSlowLive: 9,
     abrEwmaFastVoD: 3,
     abrEwmaSlowVoD: 9,
+    abrBandWidthFactor: 0.8,
+    abrBandWidthUpFactor: 0.7,
+    
+    // Timeouts
+    manifestLoadingTimeOut: 10000,
+    manifestLoadingMaxRetry: 3,
+    levelLoadingTimeOut: 10000,
+    levelLoadingMaxRetry: 3,
+    fragLoadingTimeOut: 20000,
+    fragLoadingMaxRetry: 6,
+    
+    // Outras otimizações
     stretchShortVideoTrack: true,
-    maxFragLookUpTolerance: 0.2
+    maxFragLookUpTolerance: 0.2,
+    liveDurationInfinity: false,
+    enableWebVTT: true,
+    enableCEA708Captions: true,
+    captionsTextTrack1Label: 'Legendas',
+    captionsTextTrack1LanguageCode: 'pt'
 });
-            video.onplaying = function() {
-                document.getElementById('streamStatus').textContent = 'Status: Transmitindo';
-                document.getElementById('streamStatus').style.color = 'var(--success)';
-            };
-            
-            video.onerror = function() {
-                console.error('❌ Erro no vídeo:', video.error);
-                document.getElementById('streamStatus').textContent = 'Status: Erro';
-                document.getElementById('streamStatus').style.color = 'var(--danger)';
-                showNotification('Erro ao reproduzir canal', 'error');
-            };
-            
-            appState.currentChannel = channel;
-        }
-
-        function showPlayOverlay() {
-            const container = document.querySelector('.video-container');
-            const existing = document.getElementById('playOverlay');
-            if (existing) existing.remove();
-            
-            const overlay = document.createElement('div');
-            overlay.id = 'playOverlay';
-            overlay.style.cssText = `
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 100%;
-                height: 100%;
-                background: rgba(0,0,0,0.8);
-                display: flex;
-                justify-content: center;
-                align-items: center;
-                z-index: 10;
-                cursor: pointer;
-            `;
-            
-            overlay.innerHTML = `
-                <div style="text-align: center; padding: 30px; background: var(--card-bg); border-radius: 15px;">
-                    <div style="font-size: 60px; color: var(--neon-green); margin-bottom: 20px;">
-                        ▶
-                    </div>
-                    <h3 style="color: var(--neon-purple); margin-bottom: 10px;">
-                        CLIQUE PARA REPRODUZIR
-                    </h3>
-                    <p style="color: var(--text-secondary);">
-                        O navegador requer uma interação para iniciar o vídeo
-                    </p>
-                </div>
-            `;
-            
-            overlay.onclick = function() {
-                const video = document.getElementById('videoPlayer');
-                video.play().then(() => {
-                    overlay.remove();
-                }).catch(e => {
-                    console.error('Erro ao reproduzir:', e);
-                });
-            };
-            
-            container.appendChild(overlay);
-        }
-
-        // ==================== EVENT LISTENERS ====================
-        function initEventListeners() {
-            // Ativação
-            document.getElementById('activateBtn').onclick = function() {
-                const mac = document.getElementById('mac').value;
-                const key = document.getElementById('key').value;
-                
-                if (!mac || !key) {
-                    showNotification('Preencha MAC e KEY', 'error');
-                    return;
-                }
-                
-                appState.activated = true;
-                document.getElementById('statusText').innerHTML = `
-                    <i class="fas fa-check-circle" style="color: var(--success);"></i>
-                    <span>Sistema ativado com sucesso!</span>
-                `;
-                document.getElementById('statusText').classList.add('active');
-                
-                // Habilitar provedores
-                document.querySelectorAll('.provider-btn').forEach(btn => {
-                    btn.style.opacity = '1';
-                    btn.style.cursor = 'pointer';
-                });
-                
-                showNotification('Sistema ativado! Selecione um provedor.', 'success');
-            };
-            
-            // Reset
-            document.getElementById('resetBtn').onclick = function() {
-                appState.activated = false;
-                appState.channels = [];
-                appState.categories = [];
-                
-                document.getElementById('statusText').innerHTML = `
-                    <i class="fas fa-clock"></i>
-                    <span>Aguardando ativação</span>
-                `;
-                document.getElementById('statusText').classList.remove('active');
-                
-                updateUI();
-                showNotification('Sistema resetado', 'info');
-            };
-            
-            // Recarregar
-            document.getElementById('reloadBtn').onclick = function() {
-                if (appState.currentProvider) {
-                    loadM3UPlaylist(appState.currentProvider);
-                }
-            };
-            
-            // Busca
-            document.getElementById('channelSearch').oninput = function(e) {
-                appState.searchTerm = e.target.value;
-                updateChannels();
-            };
-            
-            // Tela cheia
-            document.getElementById('fullscreenBtn').onclick = function() {
-                const video = document.getElementById('videoPlayer');
-                if (!document.fullscreenElement) {
-                    video.requestFullscreen?.() || 
-                    video.webkitRequestFullscreen?.() || 
-                    video.msRequestFullscreen?.();
-                } else {
-                    document.exitFullscreen?.() || 
-                    document.webkitExitFullscreen?.() || 
-                    document.msExitFullscreen?.();
-                }
-            };
-        }
-
         // ==================== FUNÇÕES AUXILIARES ====================
         function setCategory(category) {
             appState.currentCategory = category;
