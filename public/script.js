@@ -622,16 +622,50 @@ document.addEventListener('DOMContentLoaded', function() {
                 hls.attachMedia(videoPlayer);
                 
                 hls.on(Hls.Events.MANIFEST_PARSED, function() {
-                    videoPlayer.play().then(() => {
-                        streamStatus.textContent = 'Transmitindo (HLS)';
-                        streamStatus.style.color = 'var(--success)';
-                        showNotification(`Assistindo: ${channel.name}`, 'success');
-                    }).catch(e => {
-                        console.error('Erro ao reproduzir:', e);
-                        streamStatus.textContent = 'Clique para reproduzir';
-                        streamStatus.style.color = 'var(--warning)';
-                    });
-                });
+    // MOSTRAR BOTÃO PLAY SE AUTOPLAY FALHAR
+    const playHandler = () => {
+        videoPlayer.play().then(() => {
+            streamStatus.textContent = 'Transmitindo (HLS)';
+            streamStatus.style.color = 'var(--success)';
+            showNotification(`Assistindo: ${channel.name}`, 'success');
+            
+            // Remover o overlay se existir
+            const playOverlay = document.getElementById('playOverlay');
+            if (playOverlay) playOverlay.remove();
+            
+            // Remover este listener após sucesso
+            videoPlayer.removeEventListener('click', playHandler);
+            
+        }).catch(e => {
+            console.log('Autoplay bloqueado, aguardando interação');
+            streamStatus.textContent = 'Clique para reproduzir';
+            streamStatus.style.color = 'var(--warning)';
+            
+            // Adicionar overlay de play
+            addPlayOverlay();
+        });
+    };
+    
+    // Tentar autoplay primeiro
+    videoPlayer.play().then(() => {
+        streamStatus.textContent = 'Transmitindo (HLS)';
+        streamStatus.style.color = 'var(--success)';
+        showNotification(`Assistindo: ${channel.name}`, 'success');
+    }).catch(e => {
+        console.log('Autoplay bloqueado pelo navegador');
+        
+        // Configurar para play no clique
+        streamStatus.textContent = '▶ Clique para reproduzir';
+        streamStatus.style.color = 'var(--warning)';
+        
+        // Adicionar overlay de play
+        addPlayOverlay();
+        
+        // Permitir play no clique do vídeo
+        videoPlayer.style.cursor = 'pointer';
+        videoPlayer.addEventListener('click', playHandler);
+    });
+});
                 
                 hls.on(Hls.Events.ERROR, function(event, data) {
                     console.error('HLS Error:', data);
@@ -674,19 +708,134 @@ document.addEventListener('DOMContentLoaded', function() {
             videoPlayer.type = 'application/vnd.apple.mpegurl';
         }
         
-        const playPromise = videoPlayer.play();
-        
-        if (playPromise !== undefined) {
-            playPromise.then(() => {
-                streamStatus.textContent = 'Transmitindo';
-                streamStatus.style.color = 'var(--success)';
-                showNotification(`Stream iniciado: ${appState.currentChannel.name}`, 'success');
+        // Tentar autoplay
+videoPlayer.play().then(() => {
+    streamStatus.textContent = 'Transmitindo';
+    streamStatus.style.color = 'var(--success)';
+    showNotification(`Stream iniciado: ${appState.currentChannel.name}`, 'success');
+    
+    // Remover overlay se existir
+    const playOverlay = document.getElementById('playOverlay');
+    if (playOverlay) playOverlay.remove();
+    
+}).catch(e => {
+    console.log('Autoplay bloqueado para stream direto');
+    
+    // Mostrar instrução para o usuário
+    streamStatus.textContent = '▶ Clique no vídeo para reproduzir';
+    streamStatus.style.color = 'var(--warning)';
+    
+    // Adicionar overlay de play
+    addPlayOverlay();
+    
+    // Configurar play no clique
+    videoPlayer.style.cursor = 'pointer';
+    videoPlayer.addEventListener('click', function playOnClick() {
+        videoPlayer.play().then(() => {
+            streamStatus.textContent = 'Transmitindo';
+            streamStatus.style.color = 'var(--success)';
+            
+            const playOverlay = document.getElementById('playOverlay');
+            if (playOverlay) playOverlay.remove();
+            
+            videoPlayer.removeEventListener('click', playOnClick);
+            videoPlayer.style.cursor = '';
+            
+        }).catch(err => {
+            console.error('Erro ao reproduzir após clique:', err);
+            showNotification('Erro ao reproduzir. Tente outro canal.', 'error');
+        });
+    });
+});
+        // ==================== OVERLAY DE PLAY ====================
+function addPlayOverlay() {
+    // Remover overlay existente
+    const existingOverlay = document.getElementById('playOverlay');
+    if (existingOverlay) existingOverlay.remove();
+    
+    // Criar novo overlay
+    const overlay = document.createElement('div');
+    overlay.id = 'playOverlay';
+    overlay.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.7);
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        z-index: 10;
+        cursor: pointer;
+        border-radius: 12px;
+    `;
+    
+    overlay.innerHTML = `
+        <div style="
+            background: var(--card-bg);
+            padding: 30px;
+            border-radius: 20px;
+            text-align: center;
+            border: 2px solid var(--neon-purple);
+            box-shadow: 0 0 30px rgba(147, 51, 234, 0.5);
+            max-width: 80%;
+        ">
+            <div style="
+                font-size: 60px;
+                color: var(--neon-green);
+                margin-bottom: 20px;
+                animation: pulse 1.5s infinite;
+            ">
+                ▶
+            </div>
+            <h3 style="
+                color: var(--neon-purple);
+                margin: 0 0 10px 0;
+                font-size: 24px;
+            ">
+                CLIQUE PARA REPRODUZIR
+            </h3>
+            <p style="
+                color: var(--text-secondary);
+                margin: 0;
+                font-size: 16px;
+            ">
+                O navegador requer uma interação para iniciar o vídeo
+            </p>
+            <p style="
+                color: var(--text-secondary);
+                margin: 15px 0 0 0;
+                font-size: 14px;
+                opacity: 0.8;
+            ">
+                Clique em qualquer lugar nesta área
+            </p>
+        </div>
+    `;
+    
+    // Adicionar ao container do player
+    const playerContainer = document.querySelector('.video-container');
+    if (playerContainer) {
+        playerContainer.style.position = 'relative';
+        playerContainer.appendChild(overlay);
+    }
+    
+    // Configurar clique no overlay
+    overlay.addEventListener('click', function() {
+        const video = document.getElementById('videoPlayer');
+        if (video) {
+            video.play().then(() => {
+                overlay.remove();
+                showNotification('Reprodução iniciada!', 'success');
             }).catch(e => {
                 console.error('Erro ao reproduzir:', e);
-                streamStatus.textContent = 'Clique para reproduzir';
-                streamStatus.style.color = 'var(--warning)';
-                showNotification('Clique no botão play', 'info');
+                showNotification('Erro ao reproduzir. Tente novamente.', 'error');
             });
+        }
+    });
+
         }
         
         videoPlayer.onerror = function() {
