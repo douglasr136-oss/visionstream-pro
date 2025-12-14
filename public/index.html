@@ -974,85 +974,82 @@
 
         // ==================== CARREGAMENTO DE PLAYLIST ====================
         async function loadM3UPlaylist(providerName) {
-            try {
-                showNotification(`🔄 Conectando ao ${CONFIG.PROVIDERS[providerName].name}...`, 'info');
-                
-                const proxyUrl = `${CONFIG.BACKEND_URL}/api/playlist?provider=${providerName}`;
-                console.log('🔗 URL:', proxyUrl);
-                
-                const response = await fetch(proxyUrl, {
-                    headers: {
-                        'Accept': 'audio/x-mpegurl',
-                        'X-API-Key': CONFIG.API_KEY
-                    }
-                });
-                
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
-                
-                const m3uContent = await response.text();
-                if (!m3uContent.includes('#EXTM3U')) throw new Error('Formato inválido');
-                
-                // Parse M3U
-                const parsed = parseM3U(m3uContent);
-                appState.channels = parsed.channels;
-                appState.categories = parsed.categories;
-                
-                // Atualizar UI
-                updateUI();
-                
-                // Salvar no localStorage
-                saveToLocalStorage();
-                
-                showNotification(`✅ ${appState.channels.length} canais carregados!`, 'success');
-                
-            } catch (error) {
-                console.error('❌ Erro:', error);
-                showNotification('Falha ao carregar playlist', 'error');
+    try {
+        console.log('🎯 Carregando playlist para:', providerName);
+        showNotification(`🔄 Conectando ao provedor...`, 'info');
+        
+        // URL SEM API KEY (backend não valida mais)
+        const proxyUrl = `https://visionstream-proxy.onrender.com/api/playlist?provider=${providerName}&_=${Date.now()}`;
+        console.log('🔗 URL completa:', proxyUrl);
+        
+        // REQUISIÇÃO SIMPLIFICADA
+        const response = await fetch(proxyUrl, {
+            method: 'GET',
+            mode: 'cors',
+            cache: 'no-cache',
+            headers: {
+                'Accept': 'audio/x-mpegurl, text/plain, */*'
             }
+        });
+        
+        console.log('📥 Status:', response.status, response.statusText);
+        console.log('📥 Headers:', Object.fromEntries(response.headers.entries()));
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        
+        const m3uContent = await response.text();
+        console.log('✅ Recebido:', m3uContent.length, 'bytes');
+        console.log('📄 Primeiras linhas:', m3uContent.split('\n').slice(0, 10).join('\n'));
+        
+        if (!m3uContent.includes('#EXTM3U')) {
+            console.warn('⚠️ Conteúdo pode não ser M3U válido');
+        }
+        
+        // Parse M3U
+        const parsed = parseM3U(m3uContent);
+        appState.channels = parsed.channels;
+        appState.categories = parsed.categories;
+        appState.currentProvider = providerName;
+        
+        // Atualizar UI
+        updateUI();
+        
+        showNotification(`✅ ${parsed.channels.length} canais carregados!`, 'success');
+        
+    } catch (error) {
+        console.error('💥 ERRO DETALHADO:', {
+            message: error.message,
+            stack: error.stack,
+            name: error.name
+        });
+        
+        showNotification(`Erro: ${error.message}`, 'error');
+        
+        // Carregar dados locais de fallback
+        loadLocalFallback();
+    }
+}
 
-        function parseM3U(content) {
-            const lines = content.split('\n');
-            const channels = [];
-            const categories = new Set(['Geral']);
-            
-            let currentChannel = {};
-            
-            for (let i = 0; i < lines.length; i++) {
-                const line = lines[i].trim();
-                
-                if (line.startsWith('#EXTINF:')) {
-                    // Extrair nome
-                    const lastComma = line.lastIndexOf(',');
-                    const name = lastComma > -1 ? line.substring(lastComma + 1).trim() : 'Canal sem nome';
-                    
-                    // Extrair grupo
-                    let group = 'Geral';
-                    const groupMatch = line.match(/group-title="([^"]*)"/i);
-                    if (groupMatch) group = groupMatch[1];
-                    
-                    // Extrair logo
-                    let logo = '';
-                    const logoMatch = line.match(/tvg-logo="([^"]*)"/i);
-                    if (logoMatch) logo = logoMatch[1];
-                    
-                    currentChannel = { name, group, logo, url: '' };
-                    categories.add(group);
-                    
-                } else if (line && !line.startsWith('#') && currentChannel.name) {
-                    currentChannel.url = line.trim();
-                    if (currentChannel.url.startsWith('http')) {
-                        channels.push({...currentChannel});
-                    }
-                    currentChannel = {};
-                }
-            }
-            
-            return {
-                channels: channels,
-                categories: Array.from(categories).sort()
-            };
-        }
+function loadLocalFallback() {
+    console.log('🔄 Carregando dados locais de fallback...');
+    
+    appState.channels = [
+        { name: 'GLOBO HD', group: 'Abertos', logo: '', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
+        { name: 'SBT HD', group: 'Abertos', logo: '', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
+        { name: 'RECORD HD', group: 'Abertos', logo: '', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
+        { name: 'BAND HD', group: 'Abertos', logo: '', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
+        { name: 'HBO HD', group: 'Filmes', logo: '', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
+        { name: 'FOX HD', group: 'Filmes', logo: '', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' },
+        { name: 'ESPN HD', group: 'Esportes', logo: '', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8' }
+    ];
+    
+    appState.categories = ['Abertos', 'Filmes', 'Esportes'];
+    
+    updateUI();
+    showNotification('Usando dados de demonstração', 'warning');
+}
 
         // ==================== ATUALIZAÇÃO DA UI ====================
         function updateUI() {
